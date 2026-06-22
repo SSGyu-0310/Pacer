@@ -92,3 +92,46 @@
 - **대학 단위로 나눠 중복 방지.** 우선순위 must → if_time → eng_special → med_health (`04-core-universities-decision.md` §2).
 - 영어 ratio 대학은 웹폼이 아니라 JSONL fill 경로(`02-review-guide.md` §4–5).
 - reviewer 사람구분이 켜지기 전엔 decision이 `"solo"`로 뭉치니, 분할 검수 전에 연결 권장.
+
+---
+
+## 8. 브랜치 분할 (병렬 작업)
+
+### ⛔ 동료 전용 — 손대지 않음
+**승인기록(reviewer 구분) + 진행률 UI**는 동료가 맡는다(`feat/reviewer-progress`). 충돌 방지를 위해 아래 파일은 이 계획의 다른 브랜치에서 **건드리지 않는다**:
+- `packages/core/src/services/review.service.ts`, `packages/core/src/ports/index.ts`
+- `apps/web/app/api/admin/review/*`, `apps/web/app/admin/review/page.tsx`
+- `apps/web/lib/admin-core.ts`, `apps/web/components/review/ReviewProgressBar.tsx`
+- `packages/shared/src/contracts.ts`의 **reviewer/decision 스키마 부분** (공유 파일 — 조율 필요)
+
+### 데이터 검수 — 브랜치 아님 (Supabase claim 트랙)
+검수는 공유 Supabase에 직접 쓰므로 Git 브랜치가 아니다. **대학 단위 claim**으로 운영하고 같은 대학은 한 명만 잡는다.
+- **A 트랙**: must(가천대) + eng_special(항공/공학대) + 가톨릭대(서울)
+- **B 트랙**: 서울여대 · 덕성여대 · 동덕여대 · 경기대 (경기대/동덕여대는 단위 많아 후순위로 쪼갬)
+
+### 내 브랜치 (병렬)
+| 브랜치 | 작업 | 비고 |
+|---|---|---|
+| `feat/social-auth-merge` | 카카오/구글 로그인 + 익명 cycle→User merge + 로그인 후 사이클 복원 | **유저 퍼널 baseline — 먼저 머지** |
+| `feat/soft-demand-optin` | 리포트 하단 "9모 더 깊은 분석 알림받기" 토글/이벤트 | 결제 UI 없이 신호만. `shared/enums.ts`에 이벤트 추가 |
+| `feat/funnel-analytics-hardening` | `cycle_created→score_submit→analysis_success→report_view→reminder_opt_in` 이벤트 누락 점검 + PostHog init/env | 출시 판단용 |
+| `fix/prelaunch-mobile-qa` | 모바일 퍼널 QA(입력 3분, 결과/리포트/알림 시트, 면책/AI 고지, iOS/Android PWA 안내) | auth 머지 뒤 최종 1회 |
+| `chore/vercel-launch-gate` | Vercel env/시크릿(LLM key·DB URL), **프로덕션 `ADMIN_ENABLED=0` 확인(끄기)**, OG 공유카드 폴리시, Lighthouse/PWA | 코드 적음, 설정 중심 |
+| `docs/prelaunch-marketing-copy` | 6모 무료체험 카피 · 커뮤니티 배포글 · 9모 알림 문구 · 예시 리포트 문구 | 코드 무충돌 |
+
+### ⚠️ 충돌 클러스터 (주의)
+`social-auth-merge` · `soft-demand-optin` · `funnel-analytics-hardening` · `mobile-qa`는 **같은 유저 퍼널 페이지**(`analysis/page.tsx`, `report/page.tsx`)를 건드린다.
+→ **`social-auth-merge`를 먼저 머지해 baseline으로** 깔고, 나머지를 그 위에 얹는다. demand 토글은 페이지 편집 최소화(이벤트는 `enums.ts`에).
+
+### Acceptance 주의
+- `social-auth-merge`: "**기기 바꿔/쿠키 지워도 로그인하면 6모 사이클이 복원된다**"가 완료 기준(§4 연속성 구멍 해결 검증).
+
+### 우선순위
+1. (동료) `feat/reviewer-progress` — 검수 2인 분할을 깔끔하게. *단, 검수 자체는 수동 분할로 오늘 바로 시작 가능*
+2. (나) `feat/social-auth-merge` 먼저 → baseline
+3. 동시: `soft-demand-optin` · `funnel-analytics-hardening` (auth 위에서)
+4. 마지막 게이트: `fix/prelaunch-mobile-qa` · `chore/vercel-launch-gate`
+5. 데이터 검수는 A/B claim 트랙으로 즉시 병렬
+
+### 6모에서 열지 않는 브랜치
+결제/PG 구현 · PDF · 알림 발송 어댑터 · 네이버 로그인 · P1/P2 UI — 모두 6모 범위 밖.
