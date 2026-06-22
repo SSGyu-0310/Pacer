@@ -3,6 +3,7 @@
  * Prisma ↔ 도메인 매핑은 이 계층에만 존재한다 (ORM 격리).
  */
 export * from "./cycle.repository";
+export * from "./user.repository";
 export * from "./score.repository";
 export * from "./target.repository";
 export * from "./unit.repository";

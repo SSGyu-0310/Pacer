@@ -41,6 +41,51 @@ export class PrismaCycleRepository implements CycleRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findByUserAndYear(input: {
+    userId: string;
+    admissionYear: number;
+  }): Promise<Cycle | null> {
+    const row = await this.db.admissionCycle.findFirst({
+      where: {
+        userId: input.userId,
+        admissionYear: input.admissionYear,
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+    return row ? toDomain(row) : null;
+  }
+
+  async mergeAnonToUser(input: {
+    userId: string;
+    anonSessionId: string;
+    admissionYear: number;
+  }): Promise<Cycle | null> {
+    return this.db.$transaction(async (tx) => {
+      const existingUserCycle = await tx.admissionCycle.findFirst({
+        where: {
+          userId: input.userId,
+          admissionYear: input.admissionYear,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+      if (existingUserCycle) return toDomain(existingUserCycle);
+
+      const anonCycle = await tx.admissionCycle.findFirst({
+        where: {
+          anonSessionId: input.anonSessionId,
+          admissionYear: input.admissionYear,
+        },
+      });
+      if (!anonCycle) return null;
+
+      const row = await tx.admissionCycle.update({
+        where: { id: anonCycle.id },
+        data: { userId: input.userId },
+      });
+      return toDomain(row);
+    });
+  }
+
   async updateProfile(
     id: string,
     input: { gradeStatus: Cycle["gradeStatus"]; track: Cycle["track"] },

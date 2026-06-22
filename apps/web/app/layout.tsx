@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
@@ -8,6 +9,10 @@ export const metadata: Metadata = {
   title: "Pacer — 6모부터 수능까지, 내 정시 위치를 추적하세요",
   description:
     "6모 → 9모 → 수능, 입시 사이클 전체를 함께 보는 AI 정시 전략 플랫폼. 예측이 아니라 해석입니다.",
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
   // SSR/OG 공유 프리뷰 (§7.1) — 상세 OG 카드는 /api/og 에서 동적 생성
   openGraph: {
     title: "6모부터 수능까지, 내 정시 위치를 추적하세요",
@@ -28,7 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body suppressHydrationWarning className="mx-auto min-h-dvh max-w-md bg-slate-50 px-4 py-4">
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

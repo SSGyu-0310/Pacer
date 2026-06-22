@@ -5,6 +5,7 @@
 import {
   AnalysisService,
   ApplicationPlanService,
+  AuthService,
   CompetitorSignalService,
   CycleService,
   NotificationSubscriptionService,
@@ -29,6 +30,7 @@ import {
   PrismaScoreRepository,
   PrismaTargetRepository,
   PrismaUnitRepository,
+  PrismaUserRepository,
   prisma,
 } from "@pacer/db";
 import {
@@ -42,6 +44,13 @@ import {
 
 export function getCycleService(): CycleService {
   return new CycleService(new PrismaCycleRepository(prisma));
+}
+
+export function getAuthService(): AuthService {
+  return new AuthService(
+    new PrismaUserRepository(prisma),
+    new PrismaCycleRepository(prisma),
+  );
 }
 
 export function getScoreService(): ScoreService {

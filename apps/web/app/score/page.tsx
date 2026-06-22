@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { track } from "@/lib/analytics";
@@ -85,9 +85,9 @@ const defaults: FormValues = {
   track: "natural",
   risk_profile: "balanced",
   susi_jungsi_preference: "jungsi",
-  target_universities: "연세대, 중앙대, 한양대",
+  target_universities: "연세대학교, 중앙대학교, 한양대학교",
   target_major_groups: "공학, 경영",
-  preferred_regions: "서울",
+  preferred_regions: "",
   korean_raw: undefined,
   korean_standard: 131,
   korean_percentile: 93,
@@ -125,6 +125,10 @@ export default function ScorePage() {
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
   });
+
+  useEffect(() => {
+    track("score_input_start", { admission_year: ADMISSION_YEAR });
+  }, []);
 
   /* ── 자동 진행: 칩 선택/입력 완료 시 다음 입력으로 ── */
   function advance(target: string) {
@@ -226,6 +230,7 @@ export default function ScorePage() {
       });
 
       setStatus("분석 실행 중");
+      track("analysis_run", { exam_type: "june_mock" });
       const analysis = await postJson<{ analysis_snapshot_id: string }>(
         `/api/cycles/${cycle.cycle_id}/analysis/run`,
         {

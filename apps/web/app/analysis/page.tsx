@@ -7,6 +7,7 @@ import { AlertSheet } from "@/components/AlertSheet";
 import { BandDistributionBar } from "@/components/BandParts";
 import { CtaBar } from "@/components/CtaBar";
 import { Disclaimer } from "@/components/Disclaimer";
+import { LoginSheet } from "@/components/LoginSheet";
 import { ScoreBellCurve, type SubjectScoreView } from "@/components/ScoreBellCurve";
 import { Toast } from "@/components/Toast";
 import { UnitCard, type AnalysisUnit } from "@/components/UnitCard";
@@ -314,6 +315,7 @@ export default function AnalysisPage() {
       )}
 
       <Disclaimer />
+      <LoginSheet surface="analysis" />
 
       <div className="h-4" />
       <CtaBar

@@ -81,6 +81,8 @@ function makeService(
   const cycles: CycleRepository = {
     create: () => Promise.reject(new Error("unused")),
     findByAnonSessionAndYear: () => Promise.resolve(null),
+    findByUserAndYear: () => Promise.resolve(null),
+    mergeAnonToUser: () => Promise.resolve(null),
     updateProfile: () => Promise.reject(new Error("unused")),
     findById: (id) => Promise.resolve(id === "cy-1" ? cycle : null),
   };

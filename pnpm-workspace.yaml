@@ -5,6 +5,10 @@ packages:
 allowBuilds:
   "@prisma/client": true
   "@prisma/engines": true
+  core-js: true
   esbuild: true
   prisma: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - posthog-js@1.391.9

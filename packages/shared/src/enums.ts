@@ -37,8 +37,11 @@ export type ReportType = z.infer<typeof reportType>;
 export const channel = z.enum(["kakao_alimtalk", "email", "web_push"]);
 export type Channel = z.infer<typeof channel>;
 
-/** 알림 구독 이벤트 (§10.9) — P0는 9모 오픈 리마인더만 저장한다. */
-export const notificationEvent = z.enum(["september_mock_open"]);
+/** 알림 구독 이벤트 (§10.9) — P0는 9모 오픈/심화분석 예고 리마인더만 저장한다. */
+export const notificationEvent = z.enum([
+  "september_mock_open",
+  "september_paid_preview",
+]);
 export type NotificationEvent = z.infer<typeof notificationEvent>;
 
 /** 채널 발송 우선순위 (낮을수록 먼저) — §17.5 */
