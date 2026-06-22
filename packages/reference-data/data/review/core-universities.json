@@ -1,5 +1,5 @@
 {
-  "description": "Admin review CORE preset (정시 수요 상위 주요대 초안 — 사장님 가감). universityId 기준.",
+  "description": "Admin review CORE preset (정시 수요 상위 주요대). universityId 기준. universityIds = 검수 큐가 읽는 전체 목록(기존 50 + 추가분). 추가분 티어/우선순위는 additions, 분석상 특이 플래그는 flags 참조. 결정 배경: docs/reference-data/04-core-universities-decision.md",
   "universityIds": [
     "16583a19-ae3d-57fc-800d-99ac55a58aa9",
     "133fdba2-54e2-5b00-868d-931125730986",
@@ -50,7 +50,18 @@
     "5b34af97-938b-57df-a8ca-ed815e658440",
     "d91b7577-57fb-5d43-804f-a89da23e7e45",
     "6d6dd9ce-1a5c-584e-b404-2392dd17cc0f",
-    "76436861-e273-59b7-a0e4-717a53c6a4b9"
+    "76436861-e273-59b7-a0e4-717a53c6a4b9",
+    "9ade6d6c-be8f-5b92-8c94-053221c8bdb5",
+    "ff52fb65-235b-5482-88ba-fdc33fd268b8",
+    "5fd9295e-0d1b-5cc6-9649-bf0564f711f8",
+    "c7d26bcd-207c-51b8-8c72-7a9c60b8316b",
+    "330b827e-3703-55ca-9df7-92a5792cada9",
+    "237442a2-013e-54cb-85ca-1b4280b8aab6",
+    "5aa07c67-516f-5e4c-a89c-bb0a78f8c2f4",
+    "d7f89166-cebe-5e51-9566-686d4f802ed6",
+    "e79e0aa5-dbe3-5d6e-b8af-b2e69bc5312f",
+    "26903cb7-e45b-5a26-947c-9442993dc701",
+    "ac4f8ee7-b5a7-505b-b5a7-162753bdda7d"
   ],
   "_names": [
     "강원대학교 (18rules)",
@@ -97,11 +108,47 @@
     "중앙대학교 (7rules)",
     "충남대학교 (40rules)",
     "충북대학교 (38rules)",
-    "포항공과대학교 (13rules)",
+    "포항공과대학교 (13rules) [flag:특수/브랜드·정시 confidence 낮음]",
     "한국외국어대학교 (157rules)",
     "한양대학교 (15rules)",
     "한양대학교 (4rules)",
     "홍익대학교 (2rules)",
-    "홍익대학교 (2rules)"
-  ]
+    "홍익대학교 (2rules)",
+    "가천대학교 [+must]",
+    "경기대학교 (114units) [+if_time]",
+    "경기대학교 (94units) [+if_time]",
+    "서울여자대학교 (37units) [+if_time]",
+    "동덕여자대학교 (50units) [+if_time]",
+    "덕성여자대학교 (1unit) [+if_time]",
+    "한국항공대학교 (5units) [+eng_special]",
+    "한국공학대학교 (5units) [+eng_special]",
+    "가톨릭대학교(서울) (49units) [+med_health]",
+    "가톨릭대학교(서울) (12units) [+med_health]",
+    "가톨릭대학교(서울) (49units) [+med_health]"
+  ],
+  "additions": {
+    "_note": "기존 50 외 사장 결정 추가분. 검수 우선순위 = must > if_time > eng_special > med_health. core(기존 50)는 universityIds에서 additions에 없는 나머지 전부.",
+    "must": [
+      { "id": "9ade6d6c-be8f-5b92-8c94-053221c8bdb5", "name": "가천대학교", "reason": "반드시 추가" }
+    ],
+    "if_time": [
+      { "id": "ff52fb65-235b-5482-88ba-fdc33fd268b8", "name": "경기대학교(서울)", "units2027": 114 },
+      { "id": "5fd9295e-0d1b-5cc6-9649-bf0564f711f8", "name": "경기대학교", "units2027": 94 },
+      { "id": "c7d26bcd-207c-51b8-8c72-7a9c60b8316b", "name": "서울여자대학교", "units2027": 37 },
+      { "id": "330b827e-3703-55ca-9df7-92a5792cada9", "name": "동덕여자대학교", "units2027": 50 },
+      { "id": "237442a2-013e-54cb-85ca-1b4280b8aab6", "name": "덕성여자대학교", "units2027": 1 }
+    ],
+    "eng_special": [
+      { "id": "5aa07c67-516f-5e4c-a89c-bb0a78f8c2f4", "name": "한국항공대학교", "units2027": 5, "reason": "공대/특수 수요" },
+      { "id": "d7f89166-cebe-5e51-9566-686d4f802ed6", "name": "한국공학대학교", "units2027": 5, "reason": "공대/특수 수요" }
+    ],
+    "med_health": [
+      { "id": "e79e0aa5-dbe3-5d6e-b8af-b2e69bc5312f", "name": "가톨릭대학교(서울)", "units2027": 49, "reason": "의약/보건" },
+      { "id": "26903cb7-e45b-5a26-947c-9442993dc701", "name": "가톨릭대학교(서울)", "units2027": 12, "reason": "의약/보건" },
+      { "id": "ac4f8ee7-b5a7-505b-b5a7-162753bdda7d", "name": "가톨릭대학교(서울)", "units2027": 49, "reason": "의약/보건" }
+    ]
+  },
+  "flags": {
+    "c41a8496-86d1-5b14-9ec9-c47475e55127": "특수/브랜드 대학 · 정시 confidence 낮음 (포항공과대학교). 핵심대에서 빼지 않되 분석 confidence는 보수적으로 강등 대상."
+  }
 }
