@@ -1,0 +1,35 @@
+{
+  "provider": "pacer-reference-data",
+  "artifactType": "core_rule_db_audit_summary",
+  "generatedAt": "2026-06-19T17:36:30.297Z",
+  "status": "ok",
+  "errors": [],
+  "inputs": {
+    "decisions": "packages/reference-data/data/review/review-decisions.jsonl"
+  },
+  "counts": {
+    "localCoreRuleFillDecisions": 820,
+    "activeDbCoreRuleFillDecisions": 820,
+    "supersededDbCoreRuleFillDecisions": 266,
+    "activeDbReviewDecisionsAllReviewers": 820,
+    "dbRulesCoveredByActiveDecisions": 820,
+    "localCoreRuleFillDecisionsByStatus": {
+      "parsed": 808,
+      "verified": 12
+    },
+    "dbRulesCoveredByActiveDecisionsByStatus": {
+      "parsed": 808,
+      "verified": 12
+    }
+  },
+  "invariants": {
+    "localDecisionsMissingInDb": 0,
+    "extraActiveDbDecisions": 0,
+    "activeDecisionsTargetMissingRules": 0,
+    "activeDecisionRulesWithStatusMismatch": 0,
+    "activeDecisionRulesWithInvalidFormula": 0,
+    "ratioRulesMissingWeight": 0,
+    "activeDecisionRulesWithInvalidInquiryPolicy": 0,
+    "activeDecisionRulesRejectedByMapRule": 0
+  }
+}

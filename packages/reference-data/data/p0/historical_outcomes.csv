@@ -1,0 +1,5 @@
+id,unitId,year,avgScore,cutScore,percentileCut,competitionRate,additionalPass,sourceUrl,confidence
+50105010-5010-4010-8010-501050105010,aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa,2026,575,560,92,4.8,18,internal-demo://sample-not-for-admission,medium
+50205020-5020-4020-8020-502050205020,bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb,2026,94,91.5,91.5,5.2,35,internal-demo://sample-not-for-admission,medium
+50305030-5030-4030-8030-503050305030,cccccccc-cccc-4ccc-8ccc-cccccccccccc,2026,745,730,93,6.1,24,internal-demo://sample-not-for-admission,low
+50405040-5040-4040-8040-504050405040,dddddddd-dddd-4ddd-8ddd-dddddddddddd,2026,550,540,88,3.7,8,internal-demo://sample-not-for-admission,limited

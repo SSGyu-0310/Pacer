@@ -1,0 +1,454 @@
+{
+  "universities": [
+    {
+      "universityId": "16583a19-ae3d-57fc-800d-99ac55a58aa9",
+      "universityName": "강원대학교",
+      "unitCount": 18,
+      "representativeRuleId": "01f918dd-86cf-5633-ac0b-16064cdca43a",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000003",
+      "attachmentUrl": "https://admission.kangwon.ac.kr/admission/downloadBbsFile.do?atchmnflNo=116258&bbsNo=373&nttNo=186042&&pageUnit=10&searchCtgry=%EC%88%98%EC%8B%9C&key=2150&pageIndex=1",
+      "filled": true
+    },
+    {
+      "universityId": "133fdba2-54e2-5b00-868d-931125730986",
+      "universityName": "강원대학교",
+      "unitCount": 6,
+      "representativeRuleId": "16ec706e-5c21-5ebb-ab13-4bd5dd42e1e2",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000004",
+      "attachmentUrl": "https://admission.kangwon.ac.kr/admission/downloadBbsFile.do?atchmnflNo=116258&bbsNo=373&nttNo=186042&&pageUnit=10&searchCtgry=%EC%88%98%EC%8B%9C&key=2150&pageIndex=1",
+      "filled": true
+    },
+    {
+      "universityId": "2931ba9e-6716-5657-82f0-3780e268bbd0",
+      "universityName": "강원대학교",
+      "unitCount": 7,
+      "representativeRuleId": "009eb2f4-7a72-5cb5-9fc2-03da25fa353e",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0003363",
+      "attachmentUrl": "https://iphak.gwnu.ac.kr/sites/iphak/download/2021%20susi.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "f4c05189-c5de-5039-8281-8a7cacd8e350",
+      "universityName": "강원대학교",
+      "unitCount": 6,
+      "representativeRuleId": "897e72f0-9aeb-5a91-95ce-580b2c8ca064",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0003364",
+      "attachmentUrl": "https://admission.kangwon.ac.kr/admission/downloadBbsFile.do?atchmnflNo=116259&bbsNo=373&nttNo=186042&&pageUnit=10&searchCtgry=%EC%88%98%EC%8B%9C&key=2150&pageIndex=1",
+      "filled": true
+    },
+    {
+      "universityId": "793ab22a-d6b1-5ec0-9b84-302c186b3401",
+      "universityName": "건국대학교",
+      "unitCount": 70,
+      "representativeRuleId": "e58c1812-89f8-584c-9ba0-bc7abc7d8616",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000052",
+      "attachmentUrl": "http://enter.konkuk.ac.kr/file/download.do?sfn=20260604095645282_8762.pdf&ofn=2027%ed%95%99%eb%85%84%eb%8f%84+%ea%b1%b4%ea%b5%ad%eb%8c%80%ed%95%99%ea%b5%90+%ec%88%98%ec%8b%9c%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95(%eb%8b%a8%eb%a9%b4)_260529.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "f2f8c9ff-f62c-5b94-95bc-92f217b920ce",
+      "universityName": "건국대학교",
+      "unitCount": 2,
+      "representativeRuleId": "1e95a6ac-d206-5bce-897c-5db1058c2602",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000053",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "785f75f0-d7dd-5f3f-85af-0978a38203ae",
+      "universityName": "경북대학교",
+      "unitCount": 20,
+      "representativeRuleId": "aef5a861-3d4c-5e1e-a469-e332f078b090",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000005",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "3f97f4ba-6640-5721-aa9f-efdef0861daf",
+      "universityName": "경상국립대학교",
+      "unitCount": 59,
+      "representativeRuleId": "121b0191-7691-5c24-a43e-60869e9104c1",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000007",
+      "attachmentUrl": "https://new.gnu.ac.kr/common/fileDownload.do?fileKey=68158",
+      "filled": true
+    },
+    {
+      "universityId": "df0ea65d-ad5e-5bec-b435-13d3bdcf950b",
+      "universityName": "경희대학교",
+      "unitCount": 45,
+      "representativeRuleId": "674c0f2b-b012-5dba-ad06-9eb5702b8bc6",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000066",
+      "attachmentUrl": "https://kr.object.gov-ncloudstorage.com/khuiphakstorage/upload/20260429032446325_2028%ED%95%99%EB%85%84%EB%8F%84%20%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90%20%EB%8C%80%ED%95%99%EC%9E%85%ED%95%99%EC%A0%84%ED%98%95%EA%B3%84%ED%9A%8D%28%EC%95%88%29.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "fcc3f3a9-9d74-5b40-9483-ddc3f55367f5",
+      "universityName": "고려대학교",
+      "unitCount": 65,
+      "representativeRuleId": "b2e53473-b726-5bc9-b6d5-92398783848a",
+      "sourceUrl": "https://oku.korea.ac.kr//oku/cms/FR_BBS_CON/BoardView.do?MENU_ID=750&CONTENTS_NO=1&SITE_NO=2&BOARD_SEQ=5&BBS_SEQ=1712",
+      "attachmentUrl": "https://oku.korea.ac.kr/ajaxfile/FR_SVC/FileDown.do?GBN=X01&BOARD_SEQ=5&SITE_NO=2&BBS_SEQ=1712&FILE_SEQ=2",
+      "filled": true
+    },
+    {
+      "universityId": "51796948-b1db-5ea0-81a9-3c04801a7007",
+      "universityName": "고려대학교",
+      "unitCount": 10,
+      "representativeRuleId": "d2749773-b4c6-52cc-8381-b511fb813f8d",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000070",
+      "attachmentUrl": "https://oku.korea.ac.kr/ajaxfile/FR_SVC/FileDown.do?GBN=X01&BOARD_SEQ=8&SITE_NO=3&BBS_SEQ=1960&FILE_SEQ=1",
+      "filled": true
+    },
+    {
+      "universityId": "165518c9-a8ee-53a8-bd07-13e616ed2d7a",
+      "universityName": "광운대학교",
+      "unitCount": 21,
+      "representativeRuleId": "962c1c48-2174-5040-b506-8db22cd392a8",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000074",
+      "attachmentUrl": "https://iphak.kw.ac.kr/upload_data/mojib/20260514130711_4.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "bd1c8f9d-bec7-5b2b-a5c1-1fdd5c60b05f",
+      "universityName": "국민대학교",
+      "unitCount": 26,
+      "representativeRuleId": "e5d1b3b8-de49-560a-a61c-cdc48d9cf81e",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000078",
+      "attachmentUrl": "http://admission.kookmin.ac.kr/datafiles/contents/%EA%B5%AD%EB%AF%BC%EB%8C%80%ED%95%99%EA%B5%90_2027%ED%95%99%EB%85%84%EB%8F%84_%EC%88%98%EC%8B%9C_%EB%AA%A8%EC%A7%91%EC%9A%94%EA%B0%95.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "569ae791-25cb-5d68-bc3e-c97d39a0daf9",
+      "universityName": "단국대학교",
+      "unitCount": 37,
+      "representativeRuleId": "22b3b971-a10f-5611-b319-a94686ca256c",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000082",
+      "attachmentUrl": "https://ipsi.dankook.ac.kr/bbs/filedown.php?bbsid=juk_ipca&file_seq=6681",
+      "filled": true
+    },
+    {
+      "universityId": "12bf1acb-819b-5ee4-9222-f6bd73afdcb8",
+      "universityName": "단국대학교",
+      "unitCount": 35,
+      "representativeRuleId": "e583f7b0-3f24-5709-bfd6-a01e1e5d65d7",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0002726",
+      "attachmentUrl": "https://ipsi.dankook.ac.kr/bbs/filedown.php?bbsid=che_ipca&file_seq=6680",
+      "filled": true
+    },
+    {
+      "universityId": "a22b13fe-1a2f-5ba9-b009-95d5f2425a97",
+      "universityName": "동국대학교",
+      "unitCount": 25,
+      "representativeRuleId": "11a4b1c0-14ec-50d4-a806-04955b65ffa7",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000100",
+      "attachmentUrl": "http://ipsi.dongguk.edu/upload/file/202604141705099GCK32.PDF",
+      "filled": true
+    },
+    {
+      "universityId": "ea6321f3-e15e-5235-9a62-a4858d0912fe",
+      "universityName": "동국대학교",
+      "unitCount": 12,
+      "representativeRuleId": "b7b1a91d-539b-5166-9692-acab783f3d45",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000101",
+      "attachmentUrl": "https://ipsi.dongguk.ac.kr/cmmn/fileDown.do?fileSeq=2446",
+      "filled": true
+    },
+    {
+      "universityId": "b65c5b6e-fe11-5da9-90d6-59a54840600c",
+      "universityName": "명지대학교",
+      "unitCount": 95,
+      "representativeRuleId": "8b66d2bc-3a35-5b9f-b307-5bc57d90efc0",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000111",
+      "attachmentUrl": "https://iphak.mju.ac.kr/images/mojib/20260604145102_58.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "e240e201-621a-5f98-9175-e48343fbcd82",
+      "universityName": "명지대학교",
+      "unitCount": 95,
+      "representativeRuleId": "f4db1695-b788-53a8-9dfd-dcda6eceabf0",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000111",
+      "attachmentUrl": "https://iphak.mju.ac.kr/images/mojib/20260604145102_58.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "e334e295-542d-5222-81e8-f09c1a3c6577",
+      "universityName": "부산대학교",
+      "unitCount": 42,
+      "representativeRuleId": "eb3b0073-de8b-54f3-90e2-e604e1795d7f",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000014",
+      "attachmentUrl": "https://go.pusan.ac.kr/_common/new_download_file.asp?menu=boardfile&file_no=4299",
+      "filled": true
+    },
+    {
+      "universityId": "232db17d-3620-5102-ae7f-b31f715e6dad",
+      "universityName": "상명대학교",
+      "unitCount": 35,
+      "representativeRuleId": "ab9af884-921c-51a6-8aad-f43c242c2cc4",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000117",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "85f3bcff-ffd6-5b18-bd17-0791b845e8a2",
+      "universityName": "상명대학교",
+      "unitCount": 7,
+      "representativeRuleId": "f9ab4fab-dd72-5a58-b005-d68778f05669",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0002959",
+      "attachmentUrl": "https://admission.smu.ac.kr/bbs/filedown.php?bbsid=seoul_notice&file_seq=7720",
+      "filled": true
+    },
+    {
+      "universityId": "5f3fa3d2-f93d-5e64-b4c5-8f10cbb452cb",
+      "universityName": "서강대학교",
+      "unitCount": 13,
+      "representativeRuleId": "48726052-9c22-5263-956f-7b04b2e6d1c7",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000120",
+      "attachmentUrl": "https://admission.sogang.ac.kr/upload/GUIDES/20260529153528M49GH8.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "5c323194-d8d5-5a31-9389-0276fde86dab",
+      "universityName": "서울과학기술대학교",
+      "unitCount": 46,
+      "representativeRuleId": "959b69f2-88d3-5dac-ae27-f46f3aa89fde",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000036",
+      "attachmentUrl": "https://admission.seoultech.ac.kr/ajaxfile/FR_SVC/FileDown.do?GBN=X01&BOARD_SEQ=3&SITE_NO=2&BBS_SEQ=514&FILE_SEQ=2",
+      "filled": true
+    },
+    {
+      "universityId": "063a6d80-8863-57a7-8430-87307d606ebb",
+      "universityName": "서울대학교",
+      "unitCount": 19,
+      "representativeRuleId": "593ddabe-2539-5c60-a883-3ec10b14398f",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000019",
+      "attachmentUrl": "https://admission.snu.ac.kr/webdata/admission/files/2027susi.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "080ed57e-718e-53e5-8bcd-65f636962767",
+      "universityName": "서울시립대학교",
+      "unitCount": 15,
+      "representativeRuleId": "93906900-72a2-5df9-a27f-6b2de185e33d",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000040",
+      "attachmentUrl": "https://file.uos.ac.kr/upload/admission/2027%ED%95%99%EB%85%84%EB%8F%84%20%EC%88%98%EC%8B%9C%EB%AA%A8%EC%A7%91%20%EC%8B%A0%EC%9E%85%EC%83%9D%20%EB%AA%A8%EC%A7%91%EC%9A%94%EA%B0%95.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "2854c309-5301-5701-9986-9fc8dbfcd028",
+      "universityName": "성균관대학교",
+      "unitCount": 60,
+      "representativeRuleId": "c67c6ade-2173-5dc1-84e4-5095543b8e2b",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000133",
+      "attachmentUrl": "https://admission.skku.edu/upload/guide/20260529115520H43SMR.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "61b3b4dc-8ec9-528a-aa4d-c76265706054",
+      "universityName": "세종대학교",
+      "unitCount": 34,
+      "representativeRuleId": "302528e8-dcd3-506f-b17e-07679fe5a2e6",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000138",
+      "attachmentUrl": "http://ipsi.sejong.ac.kr/board/upload_file/pdf/20265291455187597.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "e93c68ab-8908-5fea-8a9c-a74449eb1871",
+      "universityName": "숙명여자대학교",
+      "unitCount": 6,
+      "representativeRuleId": "4f911f99-a85a-5b5d-8dbc-a60af729fdd8",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000141",
+      "attachmentUrl": "https://admission.sookmyung.ac.kr/common/downLoad.asp?strFileName=01%202027%EF%BF%BD%D0%B3%E2%B5%B5%20%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%EF%BF%BD%C8%B9_250430.pdf&strRealFileName=/upload/BBS0004/20250602130318001.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "6f469bf5-dd21-58d3-940e-9c4a6b4186ea",
+      "universityName": "숭실대학교",
+      "unitCount": 93,
+      "representativeRuleId": "e0db0aaa-802a-5ead-901b-91d31d9c218c",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000143",
+      "attachmentUrl": "https://admission.ssu.ac.kr/upload/SSU(1)_20061615545.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "cb080fcc-5770-56f5-ad6d-2f323158c9a9",
+      "universityName": "아주대학교",
+      "unitCount": 10,
+      "representativeRuleId": "61370af8-f35a-5e07-a3c0-78f50d863c30",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000146",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "69965f28-12d6-559f-8e4e-644c376bcced",
+      "universityName": "연세대학교",
+      "unitCount": 30,
+      "representativeRuleId": "a0d111ab-ed42-548b-b9c8-aca80b63f571",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000149",
+      "attachmentUrl": "https://www2.yonsei.ac.kr/entrance/plan/2027_plan.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "fc9b3827-be37-5361-8af0-1b597b7cde18",
+      "universityName": "연세대학교",
+      "unitCount": 36,
+      "representativeRuleId": "c7e97dd9-0068-5564-ae77-13497e15b83e",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000150",
+      "attachmentUrl": "http://admission.yonsei.ac.kr/mirae/admission/data/2027_addmisstion_plan3.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "05292bcb-654a-5ac1-aaf3-2c35758f21b4",
+      "universityName": "이화여자대학교",
+      "unitCount": 31,
+      "representativeRuleId": "4bfa2300-4039-5e98-bd13-05220bc01792",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000163",
+      "attachmentUrl": "http://admission.ewha.ac.kr/common/download.File.asp?strFileName=2026%ED%95%99%EB%85%84%EB%8F%84_%EC%9D%B4%ED%99%94%EC%97%AC%EC%9E%90%EB%8C%80%ED%95%99%EA%B5%90_%EC%88%98%EC%8B%9C%EB%AA%A8%EC%A7%91%EC%9A%94%EA%B0%95(%EA%B2%8C%EC%8B%9C%EC%9A%A9).pdf&strRealFileName=/upload/BBS0012/20250609142237QV2QG6.PDF",
+      "filled": true
+    },
+    {
+      "universityId": "a3e6c9db-e59c-5aaa-a7c4-5550476f74bc",
+      "universityName": "인천대학교",
+      "unitCount": 25,
+      "representativeRuleId": "0d86e528-8804-586b-ad2e-1c8bc48b10a6",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0002660",
+      "attachmentUrl": "https://admission.inu.ac.kr/file/download.do?sfn=20260608112433651_2027%ed%95%99%eb%85%84%eb%8f%84+%ec%9d%b8%ec%b2%9c%eb%8c%80%ed%95%99%ea%b5%90+%ec%88%98%ec%8b%9c%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95.pdf&ofn=2027%ed%95%99%eb%85%84%eb%8f%84+%ec%9d%b8%ec%b2%9c%eb%8c%80%ed%95%99%ea%b5%90+%ec%88%98%ec%8b%9c%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "620cc6ed-4e3e-5229-9b10-aae4225b4d23",
+      "universityName": "인하대학교",
+      "unitCount": 88,
+      "representativeRuleId": "ba20dde3-abf7-52eb-8882-356df4cb61a9",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000169",
+      "attachmentUrl": "https://admission.inha.ac.kr/ajaxfile/FR_SVC/FileDown.do?GBN=X01&BOARD_SEQ=1&SITE_NO=2&BBS_SEQ=1297&FILE_SEQ=3",
+      "filled": true
+    },
+    {
+      "universityId": "c3d147c0-2cb0-5f2a-8580-3cd6a850e53f",
+      "universityName": "전남대학교",
+      "unitCount": 59,
+      "representativeRuleId": "f4dea4ee-5e21-5baf-8037-b8184c3a5509",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000024",
+      "attachmentUrl": "https://ao.jnu.ac.kr/WebApp/web/HOM/COM/Board/boardType/Ebook/EbookLink.aspx?boardID=411&Key=44&Type=DOWN&LinkUrl=%2fData%2ftmfiles%2fadmission%2febook%2fpdf%2f2022%2f%ec%88%98%ec%82%b0%ed%95%b4%ec%96%91%eb%8c%80%ed%95%99.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "5d479f9e-5303-56f5-aab9-4c53160d3f50",
+      "universityName": "전남대학교",
+      "unitCount": 38,
+      "representativeRuleId": "5298bdf8-5d26-5db1-b5fa-cd97b350b296",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000024",
+      "attachmentUrl": "https://admission.jnu.ac.kr/Data/tmfiles/admission/doc/2026/2026-jung-250723.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "5f705099-8bca-543c-bc00-957c7944c439",
+      "universityName": "전북대학교",
+      "unitCount": 20,
+      "representativeRuleId": "ae7d2935-66ab-5f3c-aba8-5134e52bcd25",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000025",
+      "attachmentUrl": "https://enter.jbnu.ac.kr/file/download.do?sfn=20260601074307611_%ec%a0%84%eb%b6%81%eb%8c%80%ed%95%99%ea%b5%90+2027%ed%95%99%eb%85%84%eb%8f%84+%eb%8c%80%ec%9e%85%ec%a0%84%ed%98%95+%ec%88%98%ec%8b%9c+%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95_%ec%b5%9c%ec%b4%88%ea%b3%b5%ec%a7%80.pdf&ofn=%ec%a0%84%eb%b6%81%eb%8c%80%ed%95%99%ea%b5%90+2027%ed%95%99%eb%85%84%eb%8f%84+%eb%8c%80%ec%9e%85%ec%a0%84%ed%98%95+%ec%88%98%ec%8b%9c+%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95_%ec%b5%9c%ec%b4%88%ea%b3%b5%ec%a7%80.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "c76e27b1-3275-57f1-ad35-2c1f1ce10b3f",
+      "universityName": "제주대학교",
+      "unitCount": 12,
+      "representativeRuleId": "c9d83353-7225-5212-8e7a-007a8dfa6519",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000027",
+      "attachmentUrl": "https://ibsi.jejunu.ac.kr/files/attach/20241114/202411141731564603424.hwp",
+      "filled": true
+    },
+    {
+      "universityId": "5cc63e2f-a97e-5751-96c0-3d0318f32c9d",
+      "universityName": "중앙대학교",
+      "unitCount": 34,
+      "representativeRuleId": "79c3952a-41f2-5b1a-83e8-3125587836ef",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000174",
+      "attachmentUrl": "https://admission.cau.ac.kr/file/download.do?sfn=20260529040050578_55c4ff8925324156a16c17aaab30fe7e.pdf&ofn=2027%ed%95%99%eb%85%84%eb%8f%84+%ec%a4%91%ec%95%99%eb%8c%80%ed%95%99%ea%b5%90+%ec%88%98%ec%8b%9c%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95_20260529_VF.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "5abfeaf8-2e9d-54d4-a6d5-2aa78df5af36",
+      "universityName": "중앙대학교",
+      "unitCount": 7,
+      "representativeRuleId": "9b3996e6-569a-5d0f-88fb-f4c558074787",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000174",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "b243d354-e266-5839-95a0-8bca80f90f23",
+      "universityName": "충남대학교",
+      "unitCount": 40,
+      "representativeRuleId": "7566cabb-ceb0-5532-9274-4177283dc4de",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000029",
+      "attachmentUrl": "https://ipsi.cnu.ac.kr/_prog/pdfdown.php?site_dvs_cd=uadm&menu_dvs_cd=0103&gbn=A",
+      "filled": true
+    },
+    {
+      "universityId": "99cab760-3435-5cb4-976b-0a0e319af178",
+      "universityName": "충북대학교",
+      "unitCount": 38,
+      "representativeRuleId": "64a4862d-ceba-542b-a111-c89f6c76dfc9",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000030",
+      "attachmentUrl": "https://oia.cbnu.ac.kr/home/board/download.do?menukey=7667&fsn=1776673669-465-234&bsn=1732610765-108-974&dsn=1776673466-741-222",
+      "filled": true
+    },
+    {
+      "universityId": "c41a8496-86d1-5b14-9ec9-c47475e55127",
+      "universityName": "포항공과대학교",
+      "unitCount": 13,
+      "representativeRuleId": "e4393201-b90a-5dc4-9872-622cb9dca829",
+      "sourceUrl": "https://adm-u.postech.ac.kr/entrance-exam/guide/",
+      "attachmentUrl": "https://adm-u.postech.ac.kr/wp-content/uploads/2026/05/2027%ED%95%99%EB%85%84%EB%8F%84-POSTECH-%EB%AA%A8%EC%A7%91%EC%9A%94%EA%B0%95.pdf",
+      "filled": true
+    },
+    {
+      "universityId": "cef6048a-f214-54ed-b87f-254fc7068ae0",
+      "universityName": "한국외국어대학교",
+      "unitCount": 157,
+      "representativeRuleId": "10ead78b-5734-5856-b8bc-b41be0cbee4b",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000192",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "5b34af97-938b-57df-a8ca-ed815e658440",
+      "universityName": "한양대학교",
+      "unitCount": 15,
+      "representativeRuleId": "0787e66c-2391-553d-989d-3aab95dceb26",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000203",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "d91b7577-57fb-5d43-804f-a89da23e7e45",
+      "universityName": "한양대학교",
+      "unitCount": 4,
+      "representativeRuleId": "4d7219ee-7b43-55af-a81f-753f8cffc9f2",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0000204",
+      "attachmentUrl": "",
+      "filled": true
+    },
+    {
+      "universityId": "6d6dd9ce-1a5c-584e-b404-2392dd17cc0f",
+      "universityName": "홍익대학교",
+      "unitCount": 2,
+      "representativeRuleId": "095fb10e-6933-5e72-9348-89c558f86693",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0002949",
+      "attachmentUrl": "https://adiga.kr/cmm/com/file/astFileHandler.do?file_info=20260521_143405780_88683.png",
+      "filled": true
+    },
+    {
+      "universityId": "76436861-e273-59b7-a0e4-717a53c6a4b9",
+      "universityName": "홍익대학교",
+      "unitCount": 2,
+      "representativeRuleId": "cbb3e447-3fbe-5166-b2c3-db171a376fc1",
+      "sourceUrl": "https://www.adiga.kr/ucp/uvt/uni/univDetailSelection.do?menuId=PCUVTINF2000&searchSyr=2027&unvCd=0002949",
+      "attachmentUrl": "https://www.hongik.ac.kr/kr/admission/recruitment.do?mode=download&articleNo=152315&attachNo=89236",
+      "filled": true
+    }
+  ]
+}

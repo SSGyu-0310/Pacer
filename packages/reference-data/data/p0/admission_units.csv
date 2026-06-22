@@ -1,0 +1,5 @@
+id,universityId,name,recruitmentGroup,majorGroup,quota,year,active
+aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa,11111111-1111-4111-8111-111111111111,공학계열,ga,공학,42,2027,true
+bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb,22222222-2222-4222-8222-222222222222,경영학부,na,경영,60,2027,true
+cccccccc-cccc-4ccc-8ccc-cccccccccccc,33333333-3333-4333-8333-333333333333,컴퓨터소프트웨어학부,da,공학,35,2027,true
+dddddddd-dddd-4ddd-8ddd-dddddddddddd,11111111-1111-4111-8111-111111111111,문헌정보학과,na,인문,20,2027,true

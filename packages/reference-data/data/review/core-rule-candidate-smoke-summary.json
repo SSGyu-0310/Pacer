@@ -1,0 +1,17 @@
+{
+  "provider": "pacer-reference-data",
+  "artifactType": "core_rule_candidate_smoke_summary",
+  "generatedAt": "2026-06-19T17:36:32.132Z",
+  "status": "ok",
+  "errors": [],
+  "counts": {
+    "promotedRules": 820,
+    "promotedUnits": 820,
+    "targetUniversities": 31,
+    "loadedCandidates": 1554
+  },
+  "invariants": {
+    "promotedUnitsMissingFromLoadCandidates": 0,
+    "promotedUnitsLoadedWithoutRule": 0
+  }
+}

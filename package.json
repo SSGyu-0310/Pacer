@@ -1,0 +1,27 @@
+{
+  "name": "pacer",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint . --max-warnings=0",
+    "db:generate": "pnpm --filter @pacer/db generate",
+    "db:migrate": "pnpm --filter @pacer/db migrate",
+    "db:studio": "pnpm --filter @pacer/db studio",
+    "seed:p0": "pnpm --filter @pacer/reference-data seed:p0"
+  },
+  "devDependencies": {
+    "turbo": "2.3.3",
+    "typescript": "5.7.3",
+    "@types/node": "22.10.5",
+    "@next/eslint-plugin-next": "15.1.6",
+    "eslint": "^9.39.1",
+    "typescript-eslint": "^8.46.3"
+  }
+}

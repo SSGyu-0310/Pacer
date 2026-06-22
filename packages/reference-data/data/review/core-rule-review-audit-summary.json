@@ -1,0 +1,43 @@
+{
+  "provider": "pacer-reference-data",
+  "artifactType": "core_rule_review_audit_summary",
+  "generatedAt": "2026-06-19T17:36:25.582410+00:00",
+  "status": "ok",
+  "errors": [],
+  "warnings": [],
+  "inputs": {
+    "fills": "packages/reference-data/data/review/core-rule-fills.jsonl",
+    "decisions": "packages/reference-data/data/review/review-decisions.jsonl",
+    "blockers": "packages/reference-data/data/review/core-rule-blockers.jsonl"
+  },
+  "counts": {
+    "fills": 50,
+    "verifiedFills": 42,
+    "unverifiedFills": 8,
+    "activeCoreRuleFillDecisions": 820,
+    "blockers": 8
+  },
+  "blockerTypes": {
+    "conversion_table_or_formula_gap": 2,
+    "needs_human_verification": 2,
+    "official_method_pending": 2,
+    "scope_or_no_regular_csat_formula": 1,
+    "unit_mapping_unsafe": 1
+  },
+  "blockerEvidence": {
+    "missingRawEvidencePath": 0
+  },
+  "blockerPromotion": {
+    "parsedPromotionAllowed": 0
+  },
+  "fillSafety": {
+    "highRiskVerifiedFills": 0,
+    "autoDowngradedParsedFills": 41
+  },
+  "decisionChecks": {
+    "ratioDecisionsMissingWeight": 0,
+    "invalidInquiryPolicies": 0,
+    "blockedUniversityDecisionLeaks": 0,
+    "partialExactDecisionLeaks": 0
+  }
+}

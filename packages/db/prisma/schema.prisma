@@ -1,0 +1,558 @@
+// Pacer 데이터 모델 (spec §9). AdmissionCycle 중심 — User는 nullable, 익명 세션 1급.
+// 컬럼/테이블은 snake_case 매핑, Prisma 필드는 camelCase 관용 표기.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── 컨트롤드 보캐블러리 (packages/shared/enums.ts 와 1:1) ──
+enum Role {
+  student
+  parent
+  consultant
+  admin
+}
+
+enum GradeStatus {
+  high3
+  repeater
+  other
+}
+
+enum Track {
+  humanities
+  natural
+  medical
+  undecided
+}
+
+enum ExamType {
+  june_mock
+  september_mock
+  csat
+}
+
+enum ScoreStatus {
+  estimated
+  official
+}
+
+enum Subject {
+  korean
+  math
+  english
+  history
+  inquiry1
+  inquiry2
+  second_language
+}
+
+enum RecruitmentGroup {
+  ga
+  na
+  da
+  none
+}
+
+enum ScoreType {
+  standard
+  percentile
+  mixed
+  custom
+}
+
+enum VerifiedStatus {
+  draft
+  parsed
+  verified
+  live
+  deprecated
+}
+
+enum SnapshotType {
+  june_position
+  september_change
+  csat_final
+}
+
+enum Band {
+  stable
+  match
+  reach
+  challenge
+  risk
+}
+
+enum Confidence {
+  high
+  medium
+  low
+  limited
+}
+
+enum ReportType {
+  june_position_report
+  september_change_report
+  csat_final_report
+  cross_validation_report
+  parent_summary_report
+  application_plan_report
+}
+
+enum CompetitorProvider {
+  jinhak
+  gosok
+  telegnosis
+  other
+}
+
+enum CompetitorValueType {
+  kansu
+  color
+  probability
+  memo
+}
+
+enum PlanType {
+  stable
+  balanced
+  aggressive
+  custom
+}
+
+enum RiskProfile {
+  conservative
+  balanced
+  aggressive
+}
+
+enum SusiJungsiPreference {
+  susi
+  jungsi
+  undecided
+}
+
+enum OutcomeResult {
+  accepted
+  waitlisted
+  rejected
+  unknown
+}
+
+enum PlatformHint {
+  ios
+  android
+  desktop
+}
+
+enum Channel {
+  kakao_alimtalk
+  email
+  web_push
+}
+
+enum ReviewDecisionKind {
+  rule
+  outcome
+}
+
+enum ReviewVerdict {
+  confirm
+  edit
+  reject
+  flag
+  skip
+}
+
+// ── 사용자 (§9.1) — nullable; 익명 세션이 먼저 데이터를 묶는다 ──
+model User {
+  id            String   @id @default(uuid())
+  email         String?  @unique
+  phone         String?
+  kakaoId       String?
+  role          Role     @default(student)
+  createdAt     DateTime @default(now())
+  deletedAt     DateTime?
+
+  cycles                  AdmissionCycle[]
+  notificationSubscriptions NotificationSubscription[]
+
+  @@map("users")
+}
+
+// ── 입시 사이클 (§9.2) — 모든 데이터가 매달리는 루트 ──
+model AdmissionCycle {
+  id            String      @id @default(uuid())
+  userId        String?
+  anonSessionId String?
+  admissionYear Int
+  gradeStatus   GradeStatus
+  track         Track
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user              User?               @relation(fields: [userId], references: [id])
+  examScores        ExamScore[]
+  targetSnapshots   TargetSnapshot[]
+  analysisSnapshots AnalysisSnapshot[]
+  savedUnits        SavedAdmissionUnit[]
+  strategyReports   StrategyReport[]
+  competitorSignals CompetitorSignal[]
+  applicationPlans  ApplicationPlan[]
+  finalOutcomes     FinalOutcome[]
+  notificationSubscriptions NotificationSubscription[]
+
+  @@index([userId])
+  @@index([anonSessionId])
+  @@unique([anonSessionId, admissionYear])
+  @@map("admission_cycles")
+}
+
+// ── 성적 (§9.3) — 6모/9모/수능 누적 ──
+model ExamScore {
+  id          String      @id @default(uuid())
+  cycleId     String
+  examType    ExamType
+  scoreStatus ScoreStatus
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  cycle             AdmissionCycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  subjectScores     SubjectScore[]
+  analysisSnapshots AnalysisSnapshot[]
+  strategyReports   StrategyReport[]
+
+  @@unique([cycleId, examType])
+  @@map("exam_scores")
+}
+
+// ── 과목별 점수 (§9.4) ──
+model SubjectScore {
+  id            String  @id @default(uuid())
+  examScoreId   String
+  subject       Subject
+  selection     String?
+  rawScore      Float?
+  standardScore Float?
+  percentile    Float?
+  grade         Int?
+
+  examScore ExamScore @relation(fields: [examScoreId], references: [id], onDelete: Cascade)
+
+  @@index([examScoreId])
+  @@map("subject_scores")
+}
+
+// ── 목표 스냅샷 (§9.5) — 시험 시점별 ──
+model TargetSnapshot {
+  id                   String               @id @default(uuid())
+  cycleId              String
+  examType             ExamType
+  targetUniversities   String[]
+  targetMajorGroups    String[]
+  preferredRegions     String[]
+  riskProfile          RiskProfile
+  susiJungsiPreference SusiJungsiPreference
+  createdAt            DateTime             @default(now())
+
+  cycle AdmissionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, examType])
+  @@map("target_snapshots")
+}
+
+// ── 레퍼런스: 대학 (§9.6) — admin-curated ──
+model University {
+  id           String  @id @default(uuid())
+  name         String
+  campus       String?
+  region       String
+  type         String?
+  displayOrder Int     @default(0)
+
+  admissionUnits AdmissionUnit[]
+
+  @@map("universities")
+}
+
+// ── 레퍼런스: 모집단위 (§9.7) ──
+model AdmissionUnit {
+  id              String           @id @default(uuid())
+  universityId    String
+  name            String
+  recruitmentGroup RecruitmentGroup
+  majorGroup      String?
+  quota           Int?
+  year            Int
+  active          Boolean          @default(true)
+
+  university         University          @relation(fields: [universityId], references: [id])
+  rules              AdmissionRule[]
+  historicalOutcomes HistoricalOutcome[]
+  analysisResults    AnalysisResult[]
+  savedBy            SavedAdmissionUnit[]
+  competitorSignals  CompetitorSignal[]
+  finalOutcomes      FinalOutcome[]
+
+  @@index([universityId])
+  @@map("admission_units")
+}
+
+// ── 레퍼런스: 반영식 (§9.8) — 버저닝 ──
+model AdmissionRule {
+  id               String         @id @default(uuid())
+  unitId           String
+  year             Int
+  scoreType        ScoreType
+  formulaJson      Json?
+  eligibilityJson  Json?
+  englishPolicyJson Json?
+  historyPolicyJson Json?
+  inquiryPolicyJson Json?
+  sourceUrl        String?
+  verifiedStatus   VerifiedStatus @default(draft)
+  updatedAt        DateTime       @updatedAt
+
+  unit AdmissionUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, year])
+  @@map("admission_rules")
+}
+
+// ── 레퍼런스: 입결 (§9.9) ──
+model HistoricalOutcome {
+  id             String     @id @default(uuid())
+  unitId         String
+  year           Int
+  avgScore       Float?
+  cutScore       Float?
+  percentileCut  Float?
+  competitionRate Float?
+  additionalPass Int?
+  sourceUrl      String?
+  confidence     Confidence @default(limited)
+
+  unit AdmissionUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, year])
+  @@map("historical_outcomes")
+}
+
+model ReferenceReviewDecision {
+  id                     String             @id @default(uuid())
+  targetKind             ReviewDecisionKind
+  targetId               String
+  verdict                ReviewVerdict
+  reviewedVerifiedStatus VerifiedStatus?
+  reviewedConfidence     Confidence?
+  correctedFields        Json?
+  aiProposalSnapshot     Json?
+  evidenceChecked        Boolean            @default(false)
+  approvalScopeKey       String?
+  reviewer               String             @default("solo")
+  reviewNotes            String?
+  supersededAt           DateTime?
+  reviewedAt             DateTime           @default(now())
+
+  @@index([targetKind, targetId])
+  @@index([approvalScopeKey])
+  @@map("reference_review_decisions")
+}
+
+model ReviewAiProposal {
+  id            String             @id @default(uuid())
+  targetKind    ReviewDecisionKind
+  targetId      String
+  promptVersion String
+  proposalJson  Json
+  modelName     String
+  createdAt     DateTime           @default(now())
+
+  @@unique([targetKind, targetId, promptVersion])
+  @@map("review_ai_proposals")
+}
+
+model RuleEvidence {
+  ruleId              String  @id
+  unvCd               String?
+  universityName      String?
+  sourceUrl           String?
+  attachmentUrl       String?
+  textPreview         String?
+  detectedSignals     Json?
+  percentageValues    Json?
+  weightValues        Json?
+  formulaSignals      Json?
+  reviewPriorityScore Int?
+  reviewStrength      String?
+  rawPath             String?
+  sourcePath          String?
+
+  @@map("rule_evidence")
+}
+
+model OutcomeEvidence {
+  outcomeId        String  @id
+  sourceUrl        String?
+  rawPath          String?
+  rowText          String?
+  metricValuesJson Json?
+
+  @@map("outcome_evidence")
+}
+
+// ── 분석 스냅샷 (§9.10) ──
+model AnalysisSnapshot {
+  id                  String       @id @default(uuid())
+  cycleId             String
+  examScoreId         String
+  snapshotType        SnapshotType
+  summaryJson         Json
+  bandDistributionJson Json
+  createdAt           DateTime     @default(now())
+
+  cycle     AdmissionCycle   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  examScore ExamScore        @relation(fields: [examScoreId], references: [id], onDelete: Cascade)
+  results   AnalysisResult[]
+
+  @@index([cycleId])
+  @@map("analysis_snapshots")
+}
+
+// ── 모집단위별 분석 결과 (§9.11) ──
+model AnalysisResult {
+  id                      String     @id @default(uuid())
+  analysisSnapshotId      String
+  unitId                  String
+  convertedScore          Float?
+  historicalReferenceScore Float?
+  scoreGap                Float?
+  band                    Band
+  confidence              Confidence
+  reasonCodes             String[]
+  warnings                String[]
+  createdAt               DateTime   @default(now())
+
+  snapshot AnalysisSnapshot @relation(fields: [analysisSnapshotId], references: [id], onDelete: Cascade)
+  unit     AdmissionUnit    @relation(fields: [unitId], references: [id])
+
+  @@index([analysisSnapshotId])
+  @@map("analysis_results")
+}
+
+// ── 저장한 모집단위 (§9.12) ──
+model SavedAdmissionUnit {
+  id      String   @id @default(uuid())
+  cycleId String
+  unitId  String
+  priority Int?
+  memo    String?
+  savedAt DateTime @default(now())
+
+  cycle AdmissionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  unit  AdmissionUnit  @relation(fields: [unitId], references: [id])
+
+  @@unique([cycleId, unitId])
+  @@map("saved_admission_units")
+}
+
+// ── 전략 리포트 (§9.13) — model_name/prompt_version 필수(재현성) ──
+model StrategyReport {
+  id            String     @id @default(uuid())
+  cycleId       String
+  examScoreId   String
+  reportType    ReportType
+  contentJson   Json
+  modelName     String
+  promptVersion String
+  createdAt     DateTime   @default(now())
+
+  cycle     AdmissionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  examScore ExamScore      @relation(fields: [examScoreId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId])
+  @@map("strategy_reports")
+}
+
+// ── 외부 도구 결과 (§9.14) — 수동 입력 전용, 자동수집 금지 ──
+model CompetitorSignal {
+  id        String              @id @default(uuid())
+  cycleId   String
+  examType  ExamType
+  provider  CompetitorProvider
+  unitId    String
+  valueType CompetitorValueType
+  value     String
+  createdAt DateTime            @default(now())
+
+  cycle AdmissionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  unit  AdmissionUnit  @relation(fields: [unitId], references: [id])
+
+  @@index([cycleId])
+  @@map("competitor_signals")
+}
+
+// ── 원서 조합 (§9.15) — ga/na/da는 unit FK 없이 id 보관 ──
+model ApplicationPlan {
+  id          String   @id @default(uuid())
+  cycleId     String
+  planType    PlanType
+  gaUnitId    String?
+  naUnitId    String?
+  daUnitId    String?
+  summaryJson Json
+  createdAt   DateTime @default(now())
+
+  cycle AdmissionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId])
+  @@map("application_plans")
+}
+
+// ── 합불 결과 (§9.16) — 데이터 해자 ──
+model FinalOutcome {
+  id              String        @id @default(uuid())
+  cycleId         String
+  unitId          String
+  applied         Boolean       @default(false)
+  result          OutcomeResult @default(unknown)
+  waitlistNumber  Int?
+  registered      Boolean?
+  evidenceFileUrl String?
+  rewardStatus    String?
+  createdAt       DateTime      @default(now())
+
+  cycle AdmissionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  unit  AdmissionUnit  @relation(fields: [unitId], references: [id])
+
+  @@index([cycleId])
+  @@map("final_outcomes")
+}
+
+// ── 알림 구독 (§9.17) — 다중 채널 ──
+model NotificationSubscription {
+  id               String        @id @default(uuid())
+  userId           String?
+  cycleId          String?
+  channel          Channel
+  endpointOrAddress String
+  pushKeys         Json?
+  platformHint     PlatformHint?
+  eventNames       String[]      @default([])
+  optedInAt        DateTime      @default(now())
+  revokedAt        DateTime?
+  createdAt        DateTime      @default(now())
+
+  user  User?           @relation(fields: [userId], references: [id])
+  cycle AdmissionCycle? @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([cycleId])
+  @@unique([cycleId, channel, endpointOrAddress])
+  @@map("notification_subscriptions")
+}

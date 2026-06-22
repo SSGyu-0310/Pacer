@@ -1,0 +1,31 @@
+{
+  "provider": "pacer-reference-data",
+  "artifactType": "core_rule_analysis_smoke_summary",
+  "generatedAt": "2026-06-19T17:36:34.138Z",
+  "status": "ok",
+  "errors": [],
+  "syntheticScore": {
+    "examType": "june_mock",
+    "scoreStatus": "official"
+  },
+  "counts": {
+    "promotedRules": 820,
+    "promotedUnits": 820,
+    "promotedCandidates": 820,
+    "ok": 501,
+    "ineligible": 0,
+    "insufficientData": 319,
+    "unsupported": 0,
+    "suspiciousHistoricalScale": 0,
+    "syntheticHistoricalOk": 820,
+    "syntheticHistoricalUnsupported": 0,
+    "syntheticHistoricalSuspiciousScale": 0
+  },
+  "invariants": {
+    "promotedCandidatesUnsupported": 0,
+    "promotedCandidatesSuspiciousHistoricalScale": 0,
+    "syntheticHistoricalPromotedCandidatesUnsupported": 0,
+    "syntheticHistoricalPromotedCandidatesSuspiciousScale": 0,
+    "syntheticHistoricalPromotedCandidatesNotOk": 0
+  }
+}

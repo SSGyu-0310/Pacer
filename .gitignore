@@ -1,0 +1,57 @@
+.DS_Store
+.claude/settings.local.json
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# local tool state
+.playwright-cli/
+.uv-cache-local/
+.vscode/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma
+packages/db/prisma/*.db
+
+# misc
+*.log
+*.sqlite
+*.sqlite-*
+coverage/
+__pycache__/
+*.py[cod]
+
+# public reference-data raw artifacts (HTML/PDF/images are stored locally)
+.reference-data/
+
+# generated reference-data collection/extraction artifacts
+packages/reference-data/data/p0-foundation/
+packages/reference-data/data/public/academyinfo/
+packages/reference-data/data/public/adiga/
+packages/reference-data/data/public/foundation/
+packages/reference-data/data/public/kcue/
+packages/reference-data/data/public/kice/
+packages/reference-data/data/public/university-admission-sites/
+packages/reference-data/data/sources/foundation_manual_*_evidence.jsonl
+
+# v0 design reference (not part of the app)
+analysis-results-screen/
+# local AI-tool / browser-capture artifacts
+.playwright-mcp/
+*-snapshot.txt
+opencode.json
