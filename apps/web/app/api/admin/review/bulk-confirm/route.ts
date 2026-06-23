@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
   try {
-    const result = await getReviewService().bulkConfirm(parsed.data.kind, parsed.data.ids);
+    const result = await getReviewService().bulkConfirm(parsed.data.kind, parsed.data.ids, parsed.data.reviewer);
     return NextResponse.json(bulkConfirmResponse.parse(result));
   } catch (error) {
     return fromDomainError(error);

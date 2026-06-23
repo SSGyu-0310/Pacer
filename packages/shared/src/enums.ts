@@ -148,3 +148,11 @@ export type ReviewDecisionKind = z.infer<typeof reviewDecisionKind>;
 /** 레퍼런스 데이터 검수 판정 */
 export const reviewVerdict = z.enum(["confirm", "edit", "reject", "flag", "skip"]);
 export type ReviewVerdict = z.infer<typeof reviewVerdict>;
+
+/** 사람 검수자 식별자(admin review 전용) */
+export const reviewReviewer = z.enum(["shin", "kwon"]);
+export type ReviewReviewer = z.infer<typeof reviewReviewer>;
+
+/** 핵심대 검수 우선순위 티어(admin review 전용) */
+export const coreReviewTier = z.enum(["core", "must", "if_time", "eng_special", "med_health"]);
+export type CoreReviewTier = z.infer<typeof coreReviewTier>;

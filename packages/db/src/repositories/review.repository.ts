@@ -1,4 +1,4 @@
-import { ValidationError } from "@pacer/core";
+import { countReviewers, ValidationError } from "@pacer/core";
 import type {
   ReviewDecisionRecord,
   ReviewItemDetailRecord,
@@ -9,6 +9,7 @@ import type {
 } from "@pacer/core";
 import type {
   Confidence,
+  ReviewReviewer,
   ReviewDecisionKind,
   ReviewVerdict,
   VerifiedStatus,
@@ -21,16 +22,30 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
 
   async listQueue(
     filter: ReviewQueueFilter,
-  ): Promise<{ items: ReviewQueueItem[]; total: number; pending: number; decided: number }> {
+  ): Promise<{
+    items: ReviewQueueItem[];
+    total: number;
+    pending: number;
+    decided: number;
+    reviewerCounts: {
+      shin: number;
+      kwon: number;
+      other: number;
+      pending: number;
+      total: number;
+      decided: number;
+    };
+  }> {
     const kinds =
       filter.kind === "rule" ? (["rule"] as const) : filter.kind === "outcome" ? (["outcome"] as const) : (["rule", "outcome"] as const);
     const items = (
       await Promise.all(
         kinds.map((kind) =>
-          kind === "rule" ? this.ruleItems(filter.coreUniversityIds) : this.outcomeItems(),
+          kind === "rule" ? this.ruleItems(filter.coreUniversityIds) : this.outcomeItems(filter.coreUniversityIds),
         ),
       )
     ).flat();
+    const reviewerCounts = countReviewers(items);
 
     const filtered = items.filter((item) => {
       if (filter.status === "pending" && item.latestVerdict) return false;
@@ -50,6 +65,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
       total: items.length,
       pending: items.filter((item) => !item.latestVerdict).length,
       decided: items.filter((item) => item.latestVerdict).length,
+      reviewerCounts,
     };
   }
 
@@ -64,6 +80,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
   async record(
     input: ReviewRecordInput,
   ): Promise<{ decisionId: string; wouldUnlockExact: boolean | null; clusterApplied: number }> {
+    if (!input.reviewer) throw new ValidationError("reviewer가 필요합니다");
     const detail = await this.getItem(input.targetKind, input.targetId);
     if (!detail) throw new Error(`review target not found: ${input.targetKind}:${input.targetId}`);
 
@@ -103,7 +120,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
             aiProposalSnapshot: snapshot,
             evidenceChecked: input.evidenceChecked,
             approvalScopeKey: scopeKey,
-            reviewer: "solo",
+            reviewer: input.reviewer,
             reviewNotes: input.reviewNotes ?? null,
           },
         });
@@ -140,7 +157,9 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
   async bulkConfirm(
     kind: ReviewDecisionKind,
     ids: string[],
+    reviewer?: ReviewReviewer,
   ): Promise<{ recorded: number; skipped: number }> {
+    if (!reviewer) throw new ValidationError("reviewer가 필요합니다");
     let recorded = 0;
     let skipped = 0;
     for (const id of ids) {
@@ -159,6 +178,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
           correctedFields: proposalCorrectedFields(detail.aiProposal.proposalJson),
           evidenceChecked: true,
           applyToCluster: kind === "rule",
+          reviewer,
         });
         recorded += 1;
       } catch {
@@ -203,9 +223,11 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
     return reps.map(({ rep: row, size }) => {
       const ev = evidence.get(row.id);
       const proposal = proposals.get(row.id);
+      const decision = decisions.get(row.id);
       return {
         kind: "rule",
         id: row.id,
+        universityId: row.unit.universityId,
         universityName: ev?.universityName ?? row.unit.university.name,
         unitName: row.unit.name,
         year: row.year,
@@ -215,7 +237,8 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
         reviewStrength: ev?.reviewStrength ?? formulaString(row.formulaJson, "reviewStrength"),
         hasAiProposal: Boolean(proposal),
         uncertain: proposal ? proposalUncertain(proposal.proposalJson) : true,
-        latestVerdict: decisions.get(row.id)?.verdict ?? null,
+        latestVerdict: decision?.verdict ?? null,
+        latestReviewer: decision?.reviewer ?? null,
         sourceUrl: ev?.sourceUrl ?? row.sourceUrl,
         textPreview: ev?.textPreview ?? null,
         clusterSize: size,
@@ -223,9 +246,13 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
     });
   }
 
-  private async outcomeItems(): Promise<ReviewQueueItem[]> {
+  private async outcomeItems(coreUniversityIds?: string[]): Promise<ReviewQueueItem[]> {
+    const scoped = coreUniversityIds && coreUniversityIds.length > 0;
     const rows = await this.db.historicalOutcome.findMany({
-      where: { confidence: { in: ["low", "limited"] } },
+      where: {
+        confidence: { in: ["low", "limited"] },
+        ...(scoped ? { unit: { universityId: { in: coreUniversityIds } } } : {}),
+      },
       include: { unit: { include: { university: true } } },
     });
     const ids = rows.map((row) => row.id);
@@ -238,9 +265,11 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
     return rows.map((row) => {
       const ev = evidence.get(row.id);
       const proposal = proposals.get(row.id);
+      const decision = decisions.get(row.id);
       return {
         kind: "outcome",
         id: row.id,
+        universityId: row.unit.universityId,
         universityName: row.unit.university.name,
         unitName: row.unit.name,
         year: row.year,
@@ -250,7 +279,8 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
         reviewStrength: null,
         hasAiProposal: Boolean(proposal),
         uncertain: proposal ? proposalUncertain(proposal.proposalJson) : row.confidence !== "high",
-        latestVerdict: decisions.get(row.id)?.verdict ?? null,
+        latestVerdict: decision?.verdict ?? null,
+        latestReviewer: decision?.reviewer ?? null,
         sourceUrl: ev?.sourceUrl ?? row.sourceUrl,
         textPreview: ev?.rowText ?? null,
         clusterSize: 1,

@@ -16,6 +16,9 @@ export class ReviewService {
   }
 
   async record(input: ReviewRecordInput) {
+    if (!input.reviewer) {
+      throw new ValidationError("reviewer가 필요합니다");
+    }
     if (input.verdict === "edit") {
       // 규칙 교정은 엔진 형태 corrected_fields가 핵심 레버.
       if (input.targetKind === "rule" && !input.correctedFields) {
@@ -29,8 +32,9 @@ export class ReviewService {
     return this.reviews.record(input);
   }
 
-  bulkConfirm(kind: ReviewDecisionKind, ids: string[]) {
+  bulkConfirm(kind: ReviewDecisionKind, ids: string[], reviewer?: ReviewRecordInput["reviewer"]) {
     if (ids.length === 0) throw new ValidationError("ids가 필요합니다");
-    return this.reviews.bulkConfirm(kind, ids);
+    if (!reviewer) throw new ValidationError("reviewer가 필요합니다");
+    return this.reviews.bulkConfirm(kind, ids, reviewer);
   }
 }

@@ -10,7 +10,9 @@ import type {
   ExamType,
   PlanType,
   ReportType,
+  CoreReviewTier,
   ReviewDecisionKind,
+  ReviewReviewer,
   ReviewVerdict,
   SnapshotType,
   VerifiedStatus,
@@ -167,6 +169,7 @@ export interface SavedUnitRepository {
 export interface ReviewQueueItem {
   kind: ReviewDecisionKind;
   id: string;
+  universityId: string | null;
   universityName: string | null;
   unitName: string | null;
   year: number | null;
@@ -177,10 +180,22 @@ export interface ReviewQueueItem {
   hasAiProposal: boolean;
   uncertain: boolean;
   latestVerdict: ReviewVerdict | null;
+  latestReviewer: string | null;
   sourceUrl: string | null;
   textPreview: string | null;
   /** 동일 식을 공유하는 모집단위 수(자기 포함). 규칙 클러스터용; 입결은 1. */
   clusterSize: number;
+  coreTier?: CoreReviewTier | null;
+  coreFlag?: string | null;
+}
+
+export interface ReviewReviewerCounts {
+  shin: number;
+  kwon: number;
+  other: number;
+  pending: number;
+  total: number;
+  decided: number;
 }
 
 export interface ReviewDecisionRecord {
@@ -234,6 +249,7 @@ export interface ReviewRecordInput {
   correctedFields?: Record<string, unknown>;
   evidenceChecked: boolean;
   approvalScopeKey?: string;
+  reviewer?: ReviewReviewer;
   reviewNotes?: string;
   /** 규칙: 동일 식을 쓰는 같은 대학의 모든 모집단위에 같은 결정을 적용. */
   applyToCluster?: boolean;
@@ -250,12 +266,22 @@ export interface ReviewQueueFilter {
 export interface ReviewQueueRepository {
   listQueue(
     filter: ReviewQueueFilter,
-  ): Promise<{ items: ReviewQueueItem[]; total: number; pending: number; decided: number }>;
+  ): Promise<{
+    items: ReviewQueueItem[];
+    total: number;
+    pending: number;
+    decided: number;
+    reviewerCounts: ReviewReviewerCounts;
+  }>;
   getItem(kind: ReviewDecisionKind, id: string): Promise<ReviewItemDetailRecord | null>;
   record(
     input: ReviewRecordInput,
   ): Promise<{ decisionId: string; wouldUnlockExact: boolean | null; clusterApplied: number }>;
-  bulkConfirm(kind: ReviewDecisionKind, ids: string[]): Promise<{ recorded: number; skipped: number }>;
+  bulkConfirm(
+    kind: ReviewDecisionKind,
+    ids: string[],
+    reviewer?: ReviewReviewer,
+  ): Promise<{ recorded: number; skipped: number }>;
 }
 
 /** 다중 채널 알림 포트 (§17.5) */

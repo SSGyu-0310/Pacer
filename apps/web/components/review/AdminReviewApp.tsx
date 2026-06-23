@@ -19,10 +19,22 @@ import {
 type Kind = "rule" | "outcome";
 type Verdict = "confirm" | "edit" | "reject" | "flag" | "skip";
 type Confidence = "limited" | "low" | "medium" | "high";
+type Reviewer = "shin" | "kwon";
+type CoreTier = "core" | "must" | "if_time" | "eng_special" | "med_health";
+
+interface ReviewerCounts {
+  shin: number;
+  kwon: number;
+  other: number;
+  pending: number;
+  total: number;
+  decided: number;
+}
 
 interface QueueItem {
   kind: Kind;
   id: string;
+  university_id: string | null;
   university_name: string | null;
   unit_name: string | null;
   year: number | null;
@@ -33,9 +45,19 @@ interface QueueItem {
   has_ai_proposal: boolean;
   uncertain: boolean;
   latest_verdict: Verdict | null;
+  latest_reviewer: string | null;
   source_url: string | null;
   text_preview: string | null;
   cluster_size: number;
+  core_tier: CoreTier | null;
+  core_flag: string | null;
+}
+
+interface LatestDecision {
+  verdict?: Verdict;
+  reviewer?: string;
+  reviewed_at?: string;
+  reviewed_confidence?: Confidence | null;
 }
 
 interface Detail {
@@ -48,20 +70,26 @@ interface Detail {
   parsed_fields: Record<string, unknown>;
   evidence: Record<string, unknown> | null;
   ai_proposal: { proposal_json: Record<string, unknown> } | null;
-  latest_decision: Record<string, unknown> | null;
+  latest_decision: LatestDecision | null;
   would_unlock_exact: boolean | null;
   cluster_size: number;
 }
 
 interface QueueResponse {
   items: QueueItem[];
-  counts: { total: number; pending: number; decided: number };
+  counts: { total: number; pending: number; decided: number; reviewer_counts: ReviewerCounts };
 }
 
 export function AdminReviewApp() {
   const [items, setItems] = useState<QueueItem[]>([]);
-  const [counts, setCounts] = useState({ total: 0, pending: 0, decided: 0 });
+  const [counts, setCounts] = useState({
+    total: 0,
+    pending: 0,
+    decided: 0,
+    reviewer_counts: emptyReviewerCounts(),
+  });
   const [kind, setKind] = useState<Kind>("rule");
+  const [reviewer, setReviewer] = useState<Reviewer | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [ruleValue, setRuleValue] = useState<RuleEditorValue>(emptyRuleEditorValue());
@@ -73,6 +101,11 @@ export function AdminReviewApp() {
   const selected = items[selectedIndex] ?? null;
   const liveUnlock = selected?.kind === "rule" ? ruleValueUnlocksExact(ruleValue) : null;
   const hasProposal = Boolean(detail?.ai_proposal && Object.keys(proposalFields(detail)).length > 0);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("pacer_admin_reviewer");
+    if (stored === "shin" || stored === "kwon") setReviewer(stored);
+  }, []);
 
   const loadQueue = useCallback(async () => {
     setQueueLoading(true);
@@ -128,6 +161,10 @@ export function AdminReviewApp() {
   const record = useCallback(
     async (verdict: Verdict, extra: Record<string, unknown> = {}, advance = true) => {
       if (!selected || saving) return;
+      if (!reviewer) {
+        setToast("검수자를 먼저 선택하세요.");
+        return;
+      }
       setSaving(true);
       try {
         const res = await fetch("/api/admin/review/decision", {
@@ -138,6 +175,7 @@ export function AdminReviewApp() {
             target_id: selected.id,
             verdict,
             evidence_checked: true,
+            reviewer,
             ...extra,
           }),
         });
@@ -159,7 +197,7 @@ export function AdminReviewApp() {
         setSaving(false);
       }
     },
-    [selected, saving, loadQueue, move],
+    [selected, saving, reviewer, loadQueue, move],
   );
 
   // 규칙: 폼 값을 verified로 저장 (exact가 풀려야 통과).
@@ -195,6 +233,10 @@ export function AdminReviewApp() {
 
   const bulkConfirm = useCallback(async () => {
     if (!selected) return;
+    if (!reviewer) {
+      setToast("검수자를 먼저 선택하세요.");
+      return;
+    }
     const ids = items
       .filter((item) => item.kind === selected.kind && item.has_ai_proposal && !item.latest_verdict)
       .map((item) => item.id);
@@ -206,7 +248,7 @@ export function AdminReviewApp() {
     const res = await fetch("/api/admin/review/bulk-confirm", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ kind: selected.kind, ids }),
+      body: JSON.stringify({ kind: selected.kind, ids, reviewer }),
     });
     const json = (await res.json().catch(() => ({}))) as { recorded?: number; skipped?: number };
     if (!res.ok) {
@@ -215,7 +257,7 @@ export function AdminReviewApp() {
     }
     setToast(`일괄 확정 ${json.recorded ?? 0}건, 스킵 ${json.skipped ?? 0}건`);
     await loadQueue();
-  }, [items, loadQueue, selected]);
+  }, [items, loadQueue, reviewer, selected]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -248,6 +290,8 @@ export function AdminReviewApp() {
     () => [detail?.university_name, detail?.unit_name, detail?.year].filter(Boolean).join(" · "),
     [detail],
   );
+  const reviewerCounts = counts.reviewer_counts;
+  const recentReview = detail?.latest_decision ? formatRecentReview(detail.latest_decision) : null;
 
   return (
     <main className="fixed inset-0 z-50 overflow-hidden bg-slate-100 text-slate-950">
@@ -260,7 +304,28 @@ export function AdminReviewApp() {
                 {counts.decided}/{counts.total}
               </span>
             </div>
+            <p className="mt-1 text-xs text-slate-500">
+              전체 {reviewerCounts.decided}/{reviewerCounts.total} · 신 {reviewerCounts.shin} · 권{" "}
+              {reviewerCounts.kwon} · 대기 {reviewerCounts.pending}
+            </p>
             <ReviewProgressBar decided={counts.decided} total={counts.total} />
+            <div className="mt-3">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">검수자</p>
+              <div className="inline-flex overflow-hidden rounded border border-slate-300 text-xs font-semibold">
+                {(["shin", "kwon"] as const).map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      setReviewer(value);
+                      window.localStorage.setItem("pacer_admin_reviewer", value);
+                    }}
+                    className={`px-3 py-1.5 ${reviewer === value ? "bg-slate-900 text-white" : "bg-white text-slate-600"}`}
+                  >
+                    {reviewerLabel(value)}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="mt-3 inline-flex overflow-hidden rounded border border-slate-300 text-xs font-semibold">
               {(["rule", "outcome"] as const).map((k) => (
                 <button
@@ -302,6 +367,11 @@ export function AdminReviewApp() {
                   </div>
                   <p className="mt-1 truncate text-xs text-slate-600">
                     {item.unit_name ?? item.id}
+                    {item.core_tier ? (
+                      <span className={`ml-1 rounded px-1.5 py-0.5 font-semibold ${tierClass(item.core_tier)}`}>
+                        {tierLabel(item.core_tier)}
+                      </span>
+                    ) : null}
                     {item.kind === "rule" && item.cluster_size > 1 ? (
                       <span className="ml-1 font-semibold text-cyan-700"> · {item.cluster_size}개 단위</span>
                     ) : null}
@@ -313,6 +383,11 @@ export function AdminReviewApp() {
                     ) : (
                       <span className="rounded bg-slate-100 px-1.5 py-0.5">대기</span>
                     )}
+                    {item.latest_verdict ? (
+                      <span className={`rounded px-1.5 py-0.5 ${reviewerClass(item.latest_reviewer)}`}>
+                        {reviewerLabel(item.latest_reviewer)}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               ))
@@ -332,19 +407,23 @@ export function AdminReviewApp() {
                   : selected?.kind === "outcome"
                     ? "입결 데이터"
                     : ""}
+                {recentReview ? ` · 최근 검수: ${recentReview}` : ""}
               </p>
+              {selected?.core_flag ? (
+                <p className="mt-1 truncate text-xs font-semibold text-amber-700">{selected.core_flag}</p>
+              ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={() => record("flag")}
-                disabled={!selected || saving}
+                disabled={!selected || saving || !reviewer}
                 className="rounded border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 disabled:opacity-40"
               >
                 플래그 (F)
               </button>
               <button
                 onClick={() => record("skip")}
-                disabled={!selected || saving}
+                disabled={!selected || saving || !reviewer}
                 className="rounded border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-40"
               >
                 스킵 (S)
@@ -352,7 +431,7 @@ export function AdminReviewApp() {
               {selected?.kind === "rule" && hasProposal ? (
                 <button
                   onClick={confirmProposal}
-                  disabled={saving}
+                  disabled={saving || !reviewer}
                   className="rounded border border-cyan-300 px-3 py-2 text-xs font-semibold text-cyan-700 disabled:opacity-40"
                 >
                   AI초안 확정
@@ -361,8 +440,8 @@ export function AdminReviewApp() {
               {selected?.kind === "rule" ? (
                 <button
                   onClick={saveRule}
-                  disabled={saving || !liveUnlock}
-                  title={liveUnlock ? "" : "환산총점·가중치를 채우면 저장할 수 있습니다"}
+                  disabled={saving || !liveUnlock || !reviewer}
+                  title={!reviewer ? "검수자를 먼저 선택하세요" : liveUnlock ? "" : "환산총점·가중치를 채우면 저장할 수 있습니다"}
                   className="rounded bg-cyan-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
                 >
                   {saving ? "저장 중…" : "저장 (Enter)"}
@@ -422,4 +501,47 @@ function currentConfidence(detail: Detail, selected: QueueItem): Confidence {
   const decided = detail.latest_decision?.reviewed_confidence;
   if (decided === "limited" || decided === "low" || decided === "medium" || decided === "high") return decided;
   return selected.confidence ?? "limited";
+}
+
+function emptyReviewerCounts(): ReviewerCounts {
+  return { shin: 0, kwon: 0, other: 0, pending: 0, total: 0, decided: 0 };
+}
+
+function reviewerLabel(value: string | null | undefined): string {
+  if (value === "shin") return "신";
+  if (value === "kwon") return "권";
+  return "기타";
+}
+
+function reviewerClass(value: string | null | undefined): string {
+  if (value === "shin") return "bg-sky-100 text-sky-800";
+  if (value === "kwon") return "bg-violet-100 text-violet-800";
+  return "bg-slate-100 text-slate-600";
+}
+
+function tierLabel(value: CoreTier): string {
+  return {
+    core: "core",
+    must: "must",
+    if_time: "if_time",
+    eng_special: "eng_special",
+    med_health: "med_health",
+  }[value];
+}
+
+function tierClass(value: CoreTier): string {
+  return {
+    core: "bg-slate-100 text-slate-600",
+    must: "bg-rose-100 text-rose-800",
+    if_time: "bg-amber-100 text-amber-800",
+    eng_special: "bg-indigo-100 text-indigo-800",
+    med_health: "bg-emerald-100 text-emerald-800",
+  }[value];
+}
+
+function formatRecentReview(decision: LatestDecision): string {
+  const reviewer = reviewerLabel(decision.reviewer);
+  const verdict = decision.verdict ?? "unknown";
+  const reviewedAt = typeof decision.reviewed_at === "string" ? decision.reviewed_at.slice(0, 10) : "";
+  return [reviewer, verdict, reviewedAt].filter(Boolean).join(" · ");
 }

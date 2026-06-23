@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       correctedFields: parsed.data.corrected_fields,
       evidenceChecked: parsed.data.evidence_checked,
       approvalScopeKey: parsed.data.approval_scope_key,
+      reviewer: parsed.data.reviewer,
       reviewNotes: parsed.data.review_notes,
       applyToCluster: parsed.data.apply_to_cluster,
     });

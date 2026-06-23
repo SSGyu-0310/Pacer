@@ -10,3 +10,4 @@ export * from "./notification.service";
 export * from "./notification-subscription.service";
 export * from "./saved-unit.service";
 export * from "./review.service";
+export * from "./review-progress";

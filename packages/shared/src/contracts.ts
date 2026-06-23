@@ -18,7 +18,9 @@ import {
   platformHint,
   recruitmentGroup,
   reportType,
+  coreReviewTier,
   reviewDecisionKind,
+  reviewReviewer,
   reviewVerdict,
   riskProfile,
   scoreStatus,
@@ -338,6 +340,7 @@ export type AiProposalContract = z.infer<typeof aiProposalContract>;
 export const reviewQueueItem = z.object({
   kind: reviewDecisionKind,
   id: z.string().uuid(),
+  university_id: z.string().uuid().nullable(),
   university_name: z.string().nullable(),
   unit_name: z.string().nullable(),
   year: z.number().int().nullable(),
@@ -348,11 +351,24 @@ export const reviewQueueItem = z.object({
   has_ai_proposal: z.boolean(),
   uncertain: z.boolean(),
   latest_verdict: reviewVerdict.nullable(),
+  latest_reviewer: z.string().nullable(),
   source_url: z.string().nullable(),
   text_preview: z.string().nullable(),
   cluster_size: z.number().int().nonnegative(),
+  core_tier: coreReviewTier.nullable(),
+  core_flag: z.string().nullable(),
 });
 export type ReviewQueueItem = z.infer<typeof reviewQueueItem>;
+
+export const reviewReviewerCounts = z.object({
+  shin: z.number().int().nonnegative(),
+  kwon: z.number().int().nonnegative(),
+  other: z.number().int().nonnegative(),
+  pending: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  decided: z.number().int().nonnegative(),
+});
+export type ReviewReviewerCounts = z.infer<typeof reviewReviewerCounts>;
 
 export const reviewQueueResponse = z.object({
   items: z.array(reviewQueueItem),
@@ -360,6 +376,7 @@ export const reviewQueueResponse = z.object({
     total: z.number().int().nonnegative(),
     pending: z.number().int().nonnegative(),
     decided: z.number().int().nonnegative(),
+    reviewer_counts: reviewReviewerCounts,
   }),
 });
 export type ReviewQueueResponse = z.infer<typeof reviewQueueResponse>;
@@ -423,6 +440,7 @@ export const recordReviewDecisionRequest = z.object({
   corrected_fields: z.record(z.string(), z.unknown()).optional(),
   evidence_checked: z.boolean().default(false),
   approval_scope_key: z.string().optional(),
+  reviewer: reviewReviewer,
   review_notes: z.string().max(2000).optional(),
   apply_to_cluster: z.boolean().default(false),
 });
@@ -439,6 +457,7 @@ export type RecordReviewDecisionResponse = z.infer<typeof recordReviewDecisionRe
 export const bulkConfirmRequest = z.object({
   kind: reviewDecisionKind,
   ids: z.array(z.string().uuid()).min(1).max(200),
+  reviewer: reviewReviewer,
 });
 export type BulkConfirmRequest = z.infer<typeof bulkConfirmRequest>;
 

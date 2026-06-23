@@ -48,6 +48,8 @@
 
 ### 화면 구성
 - 좌측: 큐 리스트. 상단 토글로 **규칙(클러스터) ↔ 입결** 큐를 전환. 각 항목에 `AI`(초안 있음)·`검수완료`/`대기` 배지, rule이면 클러스터 크기(`N개 단위`)가 표시된다.
+- 좌측 헤더: 전체 진행률과 검수자별 집계(`신`/`권`/대기)를 표시한다. 작업 전 **검수자 선택(신/권)** 을 먼저 누른다. 선택값은 브라우저에 저장되고, 이후 저장·스킵·플래그·AI초안 확정 기록의 `reviewer`로 남는다.
+- 핵심대 큐는 `core-universities.json`의 tier(`core`/`must`/`if_time`/`eng_special`/`med_health`)와 flag를 배지로 표시한다.
 - 우측: 원문/근거 카드 + 편집 패널(rule이면 `RuleFieldEditor`, outcome이면 confidence 컨트롤). 우측 패널 하단에 키보드 힌트.
 
 ### 키보드 단축키
@@ -67,6 +69,7 @@
 1. 우측 `RuleFieldEditor`에서 환산총점·가중치(국/수/탐)·영어·탐구·(고급)한국사/지원자격을 채운다.
 2. 패널 상단 배지가 **"✓ 풀림 — 저장하면 정확 환산이 켜집니다"** 가 되어야 저장 버튼이 활성화된다(`exact` 미충족이면 저장 불가).
 3. `저장(Enter)` → verdict `edit` + `reviewed_verified_status: "verified"` + `corrected_fields` + `apply_to_cluster: true` 로 DB 기록. 클러스터면 "N개 모집단위에 일괄 저장" 토스트가 뜬다.
+   - 이때 현재 선택된 검수자(`reviewer=shin|kwon`)가 함께 저장된다. 검수자를 선택하지 않으면 저장되지 않는다.
 4. **AI초안 확정 루프**: AI 초안이 있는 rule은 상단 `AI초안 확정` 버튼(또는 `a`로 일괄)으로 초안 그대로 verified 확정 가능. 초안을 그대로 믿지 말고 원문과 맞을 때만.
 
 > ⚠️ **코드 vs 옛 런북 차이**: 빌드된 `RuleFieldEditor`의 영어 mode는 현재 `deduction`/`addition` 2종만 제공한다. 4절 스키마의 `ratio`(영어 비율반영)는 **JSONL fill 파이프라인(4~5절)** 에서만 표현되고, 웹 폼에는 아직 노출되지 않는다. 영어 ratio 대학은 폼이 아니라 `core-rule-fills.jsonl`로 처리한다.
