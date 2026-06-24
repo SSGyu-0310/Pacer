@@ -37,6 +37,8 @@ const examScore: ExamScore = { ...baseScores(), id: "es-1", cycleId: "cy-1" };
 const fakeCycles: CycleRepository = {
   create: () => Promise.reject(new Error("unused")),
   findByAnonSessionAndYear: () => Promise.resolve(null),
+  findByUserAndYear: () => Promise.resolve(null),
+  mergeAnonToUser: () => Promise.resolve(null),
   updateProfile: () => Promise.reject(new Error("unused")),
   findById: (id) => Promise.resolve(id === "cy-1" ? cycle : null),
 };

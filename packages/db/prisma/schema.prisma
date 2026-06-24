@@ -172,6 +172,7 @@ enum ReviewVerdict {
 // ── 사용자 (§9.1) — nullable; 익명 세션이 먼저 데이터를 묶는다 ──
 model User {
   id            String   @id @default(uuid())
+  supabaseId    String?  @unique
   email         String?  @unique
   phone         String?
   kakaoId       String?

@@ -3,7 +3,7 @@
 /** P0 클라이언트 공통 — 로컬 진행상태 저장/HTTP 헬퍼 (페이지별 중복 제거) */
 
 export const STORAGE_KEY = "pacer:p0";
-export const ADMISSION_YEAR = 2027;
+export { ADMISSION_YEAR } from "@/lib/constants";
 
 export type StoredState = {
   cycleId?: string;

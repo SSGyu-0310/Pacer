@@ -22,8 +22,18 @@ import type {
   Subject,
   SusiJungsiPreference,
   Track,
+  UserRole,
   VerifiedStatus,
 } from "@pacer/shared";
+
+export interface User {
+  id: string;
+  supabaseId: string | null;
+  email: string | null;
+  phone: string | null;
+  kakaoId: string | null;
+  role: UserRole;
+}
 
 export interface Cycle {
   id: string;

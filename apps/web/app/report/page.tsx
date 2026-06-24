@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DeepAnalysisOptIn } from "@/components/DeepAnalysisOptIn";
 import { Disclaimer } from "@/components/Disclaimer";
+import { LoginSheet } from "@/components/LoginSheet";
 import { CheckIcon, SparklesIcon } from "@/components/icons";
 import { track } from "@/lib/analytics";
 import { ADMISSION_YEAR, readStoredState, writeStoredState } from "@/lib/client";
@@ -33,6 +35,13 @@ export default function ReportPage() {
 
   useEffect(() => {
     let active = true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") === "reminder") {
+      track("return_from_reminder", {
+        channel: params.get("channel") ?? "unknown",
+        surface: "report",
+      });
+    }
 
     async function loadReport() {
       const stored = readStoredState();
@@ -247,6 +256,8 @@ export default function ReportPage() {
       </p>
 
       <Disclaimer />
+      <DeepAnalysisOptIn />
+      <LoginSheet surface="report" />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 export * from "./cycle.service";
+export * from "./auth.service";
 export * from "./score.service";
 export * from "./analysis.service";
 export * from "./report.service";

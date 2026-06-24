@@ -7,6 +7,7 @@ import {
   ANON_COOKIE,
   ANON_MAX_AGE,
 } from "@/lib/anon-session";
+import { getCurrentAppUser } from "@/lib/authz";
 import { getCycleService } from "@/lib/container";
 import { badRequest, notFound } from "@/lib/http";
 
@@ -20,8 +21,9 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (!parsed.success) return badRequest(parsed.error);
 
   const anon = await getOrCreateAnonSessionId();
+  const user = await getCurrentAppUser();
   const result = await getCycleService().getOrCreateCycle({
-    userId: null,
+    userId: user?.id ?? null,
     anonSessionId: anon.id,
     admissionYear: parsed.data.admission_year,
     gradeStatus: parsed.data.grade_status,
@@ -43,20 +45,31 @@ export async function POST(req: Request): Promise<NextResponse> {
   return res;
 }
 
-/** 현재 익명 세션의 cycle 복원 — PWA 재방문/dashboard 시작점. */
+/** 현재 익명 세션 또는 로그인 사용자의 cycle 복원 — PWA 재방문/dashboard 시작점. */
 export async function GET(req: Request): Promise<NextResponse> {
   const parsed = z
     .object({ admission_year: z.coerce.number().int() })
     .safeParse(Object.fromEntries(new URL(req.url).searchParams));
   if (!parsed.success) return badRequest(parsed.error);
 
-  const anonSessionId = await getAnonSessionId();
-  if (!anonSessionId) return notFound();
+  const service = getCycleService();
 
-  const cycle = await getCycleService().getCycleForAnonSession({
-    anonSessionId,
-    admissionYear: parsed.data.admission_year,
-  });
+  const anonSessionId = await getAnonSessionId();
+  const anonCycle = anonSessionId
+    ? await service.getCycleForAnonSession({
+        anonSessionId,
+        admissionYear: parsed.data.admission_year,
+      })
+    : null;
+  const user = await getCurrentAppUser();
+  const cycle =
+    anonCycle ??
+    (user
+      ? await service.getCycleForUser({
+          userId: user.id,
+          admissionYear: parsed.data.admission_year,
+        })
+      : null);
   if (!cycle) return notFound();
 
   return NextResponse.json({

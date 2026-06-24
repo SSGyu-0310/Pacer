@@ -9,6 +9,7 @@ import {
   writeStoredState,
   type StoredState,
 } from "@/lib/client";
+import { track } from "@/lib/analytics";
 
 export default function DashboardPage() {
   const [state, setState] = useState<{
@@ -20,6 +21,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let active = true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") === "reminder") {
+      track("return_from_reminder", {
+        channel: params.get("channel") ?? "unknown",
+        surface: "dashboard",
+      });
+    }
 
     async function loadState() {
       const stored = readStoredState();

@@ -37,6 +37,22 @@ export class CycleService {
       }
     }
 
+    // 로그인 사용자가 새 기기/쿠키 삭제로 anon 매칭이 없을 때, 같은 연도의 기존
+    // User cycle을 재사용해 중복 생성을 막는다(cross-device 복원과 동일 cycle 보장).
+    if (input.userId) {
+      const existingForUser = await this.cycles.findByUserAndYear({
+        userId: input.userId,
+        admissionYear: input.admissionYear,
+      });
+      if (existingForUser) {
+        const cycle = await this.cycles.updateProfile(existingForUser.id, {
+          gradeStatus: input.gradeStatus,
+          track: input.track,
+        });
+        return { cycle, created: false };
+      }
+    }
+
     return { cycle: await this.cycles.create(input), created: true };
   }
 
@@ -50,5 +66,12 @@ export class CycleService {
     admissionYear: number;
   }): Promise<Cycle | null> {
     return this.cycles.findByAnonSessionAndYear(input);
+  }
+
+  getCycleForUser(input: {
+    userId: string;
+    admissionYear: number;
+  }): Promise<Cycle | null> {
+    return this.cycles.findByUserAndYear(input);
   }
 }

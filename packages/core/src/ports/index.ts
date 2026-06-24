@@ -35,12 +35,24 @@ import type {
   ScoreInput,
   TargetSnapshot,
   UnitAnalysis,
+  User,
 } from "../domain/entities";
 import type { LlmReportInput, ReportContent, StrategyReport } from "../domain/report";
 
 /** 결정적 테스트를 위한 시계 포트 */
 export interface Clock {
   now(): Date;
+}
+
+export interface UserRepository {
+  findBySupabaseId(supabaseId: string): Promise<User | null>;
+  findById(id: string): Promise<User | null>;
+  create(input: {
+    supabaseId: string;
+    email: string | null;
+    phone: string | null;
+    kakaoId: string | null;
+  }): Promise<User>;
 }
 
 export interface CycleRepository {
@@ -52,6 +64,15 @@ export interface CycleRepository {
     track: Cycle["track"];
   }): Promise<Cycle>;
   findByAnonSessionAndYear(input: {
+    anonSessionId: string;
+    admissionYear: number;
+  }): Promise<Cycle | null>;
+  findByUserAndYear(input: {
+    userId: string;
+    admissionYear: number;
+  }): Promise<Cycle | null>;
+  mergeAnonToUser(input: {
+    userId: string;
     anonSessionId: string;
     admissionYear: number;
   }): Promise<Cycle | null>;
