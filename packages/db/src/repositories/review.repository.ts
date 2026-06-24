@@ -143,6 +143,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
         verifiedStatus: { in: ["draft", "parsed"] },
         unit: { universityId: rep.unit.universityId },
       },
+      include: { unit: true },
     });
     const repSig = ruleSignature(rep);
     const ids = siblings.filter((row) => ruleSignature(row) === repSig).map((row) => row.id);
