@@ -33,6 +33,7 @@ export async function POST(
       analysis_snapshot_id: result.snapshotId,
       status: "completed" as const,
       band_distribution: result.bandDistribution,
+      summary: result.summary,
     });
   } catch (e) {
     return fromDomainError(e);

@@ -178,6 +178,7 @@ function analysisReadiness(
   if (!rule) return "unsupported";
   if (decision?.verdict === "flag") return "unsupported";
   const status = decision?.reviewedVerifiedStatus ?? rule.verifiedStatus;
+  if (status === "deprecated") return "unsupported";
   return status === "verified" || status === "live" ? "ready" : "limited";
 }
 

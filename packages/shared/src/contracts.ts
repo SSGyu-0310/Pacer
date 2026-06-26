@@ -153,10 +153,18 @@ export const runAnalysisRequest = z.object({
   exam_score_id: z.string().uuid(),
   analysis_type: snapshotType,
 });
+export const analysisSummary = z.object({
+  candidates: z.number().int().nonnegative(),
+  analyzed: z.number().int().nonnegative(),
+  ineligible: z.number().int().nonnegative(),
+  unsupported: z.number().int().nonnegative(),
+  insufficientData: z.number().int().nonnegative(),
+});
 export const runAnalysisResponse = z.object({
   analysis_snapshot_id: z.string().uuid(),
   status: z.enum(["completed", "processing"]),
   band_distribution: bandDistribution,
+  summary: analysisSummary,
 });
 
 /* ── §10.5 분석 결과 조회 ── */

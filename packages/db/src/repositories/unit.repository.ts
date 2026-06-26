@@ -54,7 +54,10 @@ export class PrismaUnitRepository implements UnitRepository {
       include: {
         university: true,
         rules: {
-          where: { year: filter.admissionYear },
+          where: {
+            year: filter.admissionYear,
+            verifiedStatus: { not: "deprecated" },
+          },
           orderBy: { updatedAt: "desc" },
           take: 1,
         },
@@ -208,6 +211,9 @@ function mapRuleWithDecision(
 ): AdmissionRuleData | null {
   if (!row) return null;
   if (decision?.verdict === "flag") {
+    return null;
+  }
+  if (decision?.reviewedVerifiedStatus === "deprecated") {
     return null;
   }
   const corrected = recordJson(decision?.correctedFields);

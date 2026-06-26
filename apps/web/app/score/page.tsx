@@ -117,10 +117,12 @@ export default function ScorePage() {
     ReferenceUniversityItem[]
   >([]);
   const [browseUniversityLoading, setBrowseUniversityLoading] = useState(false);
+  const [browseUniversityError, setBrowseUniversityError] = useState<string | null>(null);
   const [searchUniversityOptions, setSearchUniversityOptions] = useState<
     ReferenceUniversityItem[]
   >([]);
   const [searchUniversityLoading, setSearchUniversityLoading] = useState(false);
+  const [searchUniversityError, setSearchUniversityError] = useState<string | null>(null);
   const [selectedUniversities, setSelectedUniversities] = useState<
     ReferenceUniversityItem[]
   >([]);
@@ -128,6 +130,7 @@ export default function ScorePage() {
   const [unitQuery, setUnitQuery] = useState("");
   const [unitOptions, setUnitOptions] = useState<ReferenceUnitItem[]>([]);
   const [unitLoading, setUnitLoading] = useState(false);
+  const [unitError, setUnitError] = useState<string | null>(null);
   const [selectedUnits, setSelectedUnits] = useState<ReferenceUnitItem[]>([]);
   const {
     register,
@@ -149,6 +152,7 @@ export default function ScorePage() {
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       setBrowseUniversityLoading(true);
+      setBrowseUniversityError(null);
       try {
         const qs = new URLSearchParams({
           initial_group: universityInitialGroup,
@@ -160,7 +164,10 @@ export default function ScorePage() {
         );
         setBrowseUniversityOptions(data.universities);
       } catch (e) {
-        if (!isAbortError(e)) setBrowseUniversityOptions([]);
+        if (!isAbortError(e)) {
+          setBrowseUniversityOptions([]);
+          setBrowseUniversityError(errorMessage(e));
+        }
       } finally {
         if (!controller.signal.aborted) setBrowseUniversityLoading(false);
       }
@@ -176,12 +183,14 @@ export default function ScorePage() {
     if (!q) {
       setSearchUniversityOptions([]);
       setSearchUniversityLoading(false);
+      setSearchUniversityError(null);
       return;
     }
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       setSearchUniversityLoading(true);
+      setSearchUniversityError(null);
       try {
         const qs = new URLSearchParams({
           q,
@@ -193,7 +202,10 @@ export default function ScorePage() {
         );
         setSearchUniversityOptions(data.universities);
       } catch (e) {
-        if (!isAbortError(e)) setSearchUniversityOptions([]);
+        if (!isAbortError(e)) {
+          setSearchUniversityOptions([]);
+          setSearchUniversityError(errorMessage(e));
+        }
       } finally {
         if (!controller.signal.aborted) setSearchUniversityLoading(false);
       }
@@ -208,12 +220,14 @@ export default function ScorePage() {
     if (!activeUniversity) {
       setUnitOptions([]);
       setUnitLoading(false);
+      setUnitError(null);
       return;
     }
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       setUnitLoading(true);
+      setUnitError(null);
       try {
         const qs = new URLSearchParams({
           university_id: activeUniversity.id,
@@ -226,7 +240,10 @@ export default function ScorePage() {
         );
         setUnitOptions(data.units);
       } catch (e) {
-        if (!isAbortError(e)) setUnitOptions([]);
+        if (!isAbortError(e)) {
+          setUnitOptions([]);
+          setUnitError(errorMessage(e));
+        }
       } finally {
         if (!controller.signal.aborted) setUnitLoading(false);
       }
@@ -702,15 +719,14 @@ export default function ScorePage() {
           {universityQuery.trim() ? (
             <OptionList
               loading={searchUniversityLoading}
+              error={searchUniversityError}
               empty={searchUniversityOptions.length === 0}
             >
               {searchUniversityOptions.map((university) => (
                 <UniversityOptionButton
                   key={university.id}
                   university={university}
-                  selected={selectedUniversities.some(
-                    (item) => item.id === university.id,
-                  )}
+                  selected={isUniversitySelected(selectedUniversities, university)}
                   onSelect={() => selectUniversity(university)}
                 />
               ))}
@@ -738,15 +754,14 @@ export default function ScorePage() {
           </div>
           <OptionList
             loading={browseUniversityLoading}
+            error={browseUniversityError}
             empty={browseUniversityOptions.length === 0}
           >
             {browseUniversityOptions.map((university) => (
               <UniversityOptionButton
                 key={university.id}
                 university={university}
-                selected={selectedUniversities.some(
-                  (item) => item.id === university.id,
-                )}
+                selected={isUniversitySelected(selectedUniversities, university)}
                 onSelect={() => selectUniversity(university)}
               />
             ))}
@@ -802,6 +817,7 @@ export default function ScorePage() {
           </Field>
           <OptionList
             loading={unitLoading}
+            error={unitError}
             empty={Boolean(activeUniversity) && unitOptions.length === 0}
           >
             {unitOptions.map((unit) => {
@@ -931,12 +947,18 @@ function isAbortError(e: unknown): boolean {
   );
 }
 
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : "요청 실패";
+}
+
 function OptionList({
   loading,
+  error,
   empty,
   children,
 }: {
   loading: boolean;
+  error: string | null;
   empty: boolean;
   children: ReactNode;
 }) {
@@ -944,6 +966,13 @@ function OptionList({
     return (
       <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
         검색 중
+      </p>
+    );
+  }
+  if (error) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        검색 요청 실패
       </p>
     );
   }
@@ -986,6 +1015,16 @@ function UniversityOptionButton({
       </span>
       {university.core_tier ? <Badge tone="slate">{university.core_tier}</Badge> : null}
     </button>
+  );
+}
+
+function isUniversitySelected(
+  selectedUniversities: ReferenceUniversityItem[],
+  university: ReferenceUniversityItem,
+): boolean {
+  const relatedIds = new Set(university.related_ids);
+  return selectedUniversities.some((item) =>
+    item.id === university.id || item.related_ids.some((id) => relatedIds.has(id)),
   );
 }
 

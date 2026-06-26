@@ -116,6 +116,12 @@ async function resolveReferenceTargets(input: {
         },
       })
     : [];
+  const activeUniversityIds = new Set(
+    expandedUniversities.map((university) => university.id),
+  );
+  if (requestedUniversityIds.some((id) => !activeUniversityIds.has(id))) {
+    return { ok: false, message: "선택한 대학의 활성 모집단위를 찾을 수 없습니다" };
+  }
   const targetUniversityIds = unique([
     ...seedUniversityIds,
     ...expandedUniversities.map((university) => university.id),
