@@ -24,6 +24,26 @@ const base: Omit<ReviewRecordInput, "targetKind" | "verdict"> = {
   reviewer: "shin",
 };
 
+const completeRuleCorrectedFields = {
+  scoreType: "percentile",
+  formulaJson: {
+    totalScale: 1000,
+    weights: { korean: 30, math: 30, inquiry: 20 },
+  },
+  englishPolicyJson: {
+    mode: "ratio",
+    weight: 20,
+    scoreMax: 100,
+    byGrade: { 1: 100, 2: 95, 3: 90, 4: 80, 5: 70, 6: 60, 7: 50, 8: 40, 9: 30 },
+  },
+  historyPolicyJson: {
+    mode: "addition",
+    byGrade: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
+  },
+  inquiryPolicyJson: { count: 2, mode: "average" },
+  eligibilityJson: {},
+};
+
 describe("ReviewService.record 검수 가드", () => {
   it("reviewer가 없으면 거절한다", async () => {
     const repo = repoStub();
@@ -46,6 +66,40 @@ describe("ReviewService.record 검수 가드", () => {
       ValidationError,
     );
     expect(repo.record).not.toHaveBeenCalled();
+  });
+
+  it("rule edit는 영어/한국사 1~9등급표가 없으면 거절한다", async () => {
+    const repo = repoStub();
+    const service = new ReviewService(repo);
+    await expect(
+      service.record({
+        ...base,
+        targetKind: "rule",
+        verdict: "edit",
+        correctedFields: {
+          ...completeRuleCorrectedFields,
+          englishPolicyJson: {
+            mode: "ratio",
+            weight: 20,
+            scoreMax: 100,
+            byGrade: { 1: 100, 2: 95 },
+          },
+        },
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(repo.record).not.toHaveBeenCalled();
+  });
+
+  it("rule edit는 완전한 등급표가 있으면 repository로 전달한다", async () => {
+    const repo = repoStub();
+    const service = new ReviewService(repo);
+    await service.record({
+      ...base,
+      targetKind: "rule",
+      verdict: "edit",
+      correctedFields: completeRuleCorrectedFields,
+    });
+    expect(repo.record).toHaveBeenCalledOnce();
   });
 
   it("outcome edit는 corrected_fields 없이 reviewed_confidence만으로 통과한다 (입결 confidence 레버)", async () => {

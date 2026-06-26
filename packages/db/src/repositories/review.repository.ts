@@ -1,5 +1,6 @@
 import { countReviewers, ValidationError } from "@pacer/core";
 import type {
+  AdmissionRuleData,
   ReviewDecisionRecord,
   ReviewItemDetailRecord,
   ReviewQueueFilter,
@@ -87,11 +88,16 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
     let wouldUnlockExact: boolean | null = null;
     if (input.targetKind === "rule" && (input.verdict === "confirm" || input.verdict === "edit")) {
       wouldUnlockExact = await this.wouldUnlockExact(input.targetId, input);
-      // edit는 "엔진 형태로 정확히 입력"하는 작업이라 exact가 안 풀리면 거절(400).
-      // confirm은 사람이 승인은 했으나 exact까지는 못 푸는 경우가 정상이므로 기록하고 false를 반환한다.
-      if (input.verdict === "edit" && !wouldUnlockExact) {
+      const wouldEnableRelativeComparison =
+        input.verdict === "edit"
+          ? await this.wouldEnableRelativeComparison(input.targetId, input)
+          : false;
+      // edit는 공식 원문 기반 corrected_fields를 서비스 분석 경로에 태우는 작업이다.
+      // exact가 풀리면 high/medium 분석, requiredInputs 때문에 exact만 닫히면 low confidence 근사 비교를 허용한다.
+      // mapRule 불가/custom/비수능 구성요소처럼 분석 경로 자체가 닫히는 경우는 거절한다.
+      if (input.verdict === "edit" && !wouldUnlockExact && !wouldEnableRelativeComparison) {
         throw new ValidationError(
-          "교정값이 exact 환산을 풀지 못합니다 — formula/정책을 엔진 형태로 채워주세요",
+          "교정값이 exact/근사 비교 분석을 열지 못합니다 — formula/정책을 엔진 형태로 채워주세요",
         );
       }
     }
@@ -145,14 +151,18 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
       },
       include: { unit: true },
     });
-    const repSig = ruleSignature(rep);
-    const ids = siblings.filter((row) => ruleSignature(row) === repSig).map((row) => row.id);
+    const decisions = await this.latestDecisions("rule", siblings.map((row) => row.id));
+    const repSig = ruleReviewSignature(rep, decisions.get(rep.id));
+    const ids = siblings
+      .filter((row) => ruleReviewSignature(row, decisions.get(row.id)) === repSig)
+      .map((row) => row.id);
     return ids.includes(repId) ? ids : [repId, ...ids];
   }
 
   private async clusterScopeKey(repId: string): Promise<string | null> {
     const rep = await this.db.admissionRule.findUnique({ where: { id: repId }, include: { unit: true } });
-    return rep ? `${rep.unit.universityId}|2027|${hashSignature(ruleSignature(rep))}` : null;
+    const decision = rep ? await this.latestDecision("rule", rep.id) : null;
+    return rep ? `${rep.unit.universityId}|2027|${hashSignature(ruleReviewSignature(rep, decision ?? undefined))}` : null;
   }
 
   async bulkConfirm(
@@ -200,10 +210,14 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
       include: { unit: { include: { university: true } } },
     });
 
+    const decisions = await this.latestDecisions("rule", rows.map((row) => row.id));
+
     // 동일 식(대학+환산식+정책 바이트 동일)을 한 클러스터로 접고 대표 1건만 노출.
+    // active edit.corrected_fields가 있으면 교정 산식을 기준으로 다시 묶는다. 원본 parser가
+    // 자유전공/계열별 산식을 잘못 한 클러스터로 묶은 경우 admin UI에서 숨지 않게 하기 위해서다.
     const clusters = new Map<string, { rep: (typeof rows)[number]; size: number }>();
     for (const row of rows) {
-      const key = ruleSignature(row);
+      const key = ruleReviewSignature(row, decisions.get(row.id));
       const existing = clusters.get(key);
       if (!existing) {
         clusters.set(key, { rep: row, size: 1 });
@@ -215,10 +229,9 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
 
     const reps = [...clusters.values()];
     const repIds = reps.map((c) => c.rep.id);
-    const [evidence, proposals, decisions] = await Promise.all([
+    const [evidence, proposals] = await Promise.all([
       this.ruleEvidence(repIds),
       this.proposals("rule", repIds),
-      this.latestDecisions("rule", repIds),
     ]);
 
     return reps.map(({ rep: row, size }) => {
@@ -308,6 +321,8 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
       inquiryPolicyJson: row.inquiryPolicyJson,
       eligibilityJson: row.eligibilityJson,
     };
+    const unlockFields =
+      decision?.correctedFields ?? proposalCorrectedFields(proposal?.proposalJson ?? {});
     return {
       kind: "rule",
       id,
@@ -316,7 +331,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
       year: row.year,
       sourceUrl: evidence?.sourceUrl ?? row.sourceUrl,
       parsedFields,
-      evidence: evidence ? evidenceRecord(evidence) : null,
+      evidence: evidence ? evidenceRecord(evidence, row.year) : null,
       aiProposal: proposal,
       latestDecision: decision,
       wouldUnlockExact: await this.wouldUnlockExact(id, {
@@ -324,7 +339,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
         targetId: id,
         verdict: "confirm",
         reviewedVerifiedStatus: "verified",
-        correctedFields: proposalCorrectedFields(proposal?.proposalJson ?? {}),
+        correctedFields: unlockFields,
         evidenceChecked: true,
       }),
       clusterSize: (await this.clusterMemberIds(id)).length,
@@ -356,7 +371,7 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
         competitionRate: row.competitionRate,
         additionalPass: row.additionalPass,
       },
-      evidence: evidence ? evidenceRecord(evidence) : null,
+      evidence: evidence ? evidenceRecord(evidence, row.year) : null,
       aiProposal: proposal,
       latestDecision: decision,
       wouldUnlockExact: null,
@@ -365,9 +380,36 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
   }
 
   private async wouldUnlockExact(id: string, input: ReviewRecordInput): Promise<boolean> {
+    const { mapped, verified } = await this.correctedRuleForReview(id, input);
+    return Boolean(
+      mapped &&
+        verified &&
+        mapped.scoreType !== "custom" &&
+        !hasExternalComponents(mapped) &&
+        !hasRequiredFormulaInputs(mapped) &&
+        !hasApproximateInquiryConversion(mapped),
+    );
+  }
+
+  private async wouldEnableRelativeComparison(id: string, input: ReviewRecordInput): Promise<boolean> {
+    const { mapped, verified } = await this.correctedRuleForReview(id, input);
+    return Boolean(
+      mapped &&
+        verified &&
+        mapped.scoreType !== "custom" &&
+        hasComparableCsatFormula(mapped) &&
+        (hasExternalComponents(mapped) || hasRequiredFormulaInputs(mapped) || hasApproximateInquiryConversion(mapped)),
+    );
+  }
+
+  private async correctedRuleForReview(
+    id: string,
+    input: ReviewRecordInput,
+  ): Promise<{ mapped: AdmissionRuleData | null; verified: boolean }> {
     const row = await this.db.admissionRule.findUnique({ where: { id } });
-    if (!row) return false;
+    if (!row) return { mapped: null, verified: false };
     const corrected = input.correctedFields ?? {};
+    const reviewedStatus = input.reviewedVerifiedStatus ?? row.verifiedStatus;
     const mapped = mapRule({
       unitId: row.unitId,
       scoreType: stringField(corrected, "scoreType") ?? row.scoreType,
@@ -380,15 +422,12 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
         jsonField(corrected, "inquiryPolicyJson") ?? jsonField(corrected, "inquiryPolicy") ?? row.inquiryPolicyJson,
       eligibilityJson:
         jsonField(corrected, "eligibilityJson") ?? jsonField(corrected, "eligibility") ?? row.eligibilityJson,
-      verifiedStatus: input.reviewedVerifiedStatus ?? row.verifiedStatus,
+      verifiedStatus: reviewedStatus,
     });
-    return Boolean(
-      mapped &&
-        (input.reviewedVerifiedStatus === "verified" ||
-          input.reviewedVerifiedStatus === "live" ||
-          row.verifiedStatus === "verified" ||
-          row.verifiedStatus === "live"),
-    );
+    return {
+      mapped,
+      verified: reviewedStatus === "verified" || reviewedStatus === "live",
+    };
   }
 
   private async ruleEvidence(ids: string[]) {
@@ -443,14 +482,100 @@ export class PrismaReviewRepository implements ReviewQueueRepository {
   }
 }
 
+function hasExternalComponents(rule: AdmissionRuleData): boolean {
+  if (rule.externalComponents?.length) return true;
+  return (rule.formulaAlternatives ?? []).some((alternative) => Boolean(alternative.externalComponents?.length));
+}
+
+function hasRequiredFormulaInputs(rule: AdmissionRuleData): boolean {
+  if (rule.requiredInputs?.length) return true;
+  return (rule.formulaAlternatives ?? []).some((alternative) => Boolean(alternative.requiredInputs?.length));
+}
+
+function hasApproximateInquiryConversion(rule: AdmissionRuleData): boolean {
+  if (rule.formulaAlternatives?.length) {
+    return rule.formulaAlternatives.some((alternative) =>
+      hasApproximateInquiryConversion({
+        ...rule,
+        totalScale: alternative.totalScale ?? rule.totalScale,
+        calculationMode: alternative.calculationMode ?? rule.calculationMode,
+        weights: alternative.weights,
+        subjectScoreTypes: alternative.subjectScoreTypes ?? rule.subjectScoreTypes,
+        subjectScoreMaxes: alternative.subjectScoreMaxes ?? rule.subjectScoreMaxes,
+        subjectBaseScores: alternative.subjectBaseScores ?? rule.subjectBaseScores,
+        subjectAdjustments: alternative.subjectAdjustments ?? rule.subjectAdjustments,
+        finalAdjustments: alternative.finalAdjustments ?? rule.finalAdjustments,
+        requiredInputs: alternative.requiredInputs ?? rule.requiredInputs,
+        selectionPolicy: alternative.selectionPolicy ?? rule.selectionPolicy,
+        externalComponents: alternative.externalComponents ?? rule.externalComponents,
+        formulaAlternatives: undefined,
+      }),
+    );
+  }
+  if (rule.scoreType !== "mixed") return false;
+  if (!ruleUsesInquiry(rule)) return false;
+  if (rule.inquiryPolicy.conversionTable) return false;
+  return rule.subjectScoreTypes?.inquiry === undefined;
+}
+
+function ruleUsesInquiry(rule: AdmissionRuleData): boolean {
+  if (rule.weights.inquiry > 0) return true;
+  if (rule.selectionPolicy?.subjects.includes("inquiry")) return true;
+  if (rule.selectionPolicy?.groups?.some((group) => group.subjects.includes("inquiry"))) return true;
+  if (rule.subjectAdjustments?.some((adjustment) => adjustment.subject === "inquiry")) return true;
+  return rule.finalAdjustments?.some((adjustment) => adjustment.subject === "inquiry") ?? false;
+}
+
+function hasComparableCsatFormula(rule: AdmissionRuleData): boolean {
+  if (rule.selectionPolicy) return true;
+  if (rule.weights.korean > 0 || rule.weights.math > 0 || rule.weights.inquiry > 0) return true;
+  if (rule.englishPolicy.mode === "ratio" && (rule.englishPolicy.weight ?? 0) > 0) return true;
+  return (
+    rule.formulaAlternatives?.some((alternative) => {
+      if (alternative.selectionPolicy ?? rule.selectionPolicy) return true;
+      const weights = alternative.weights;
+      return weights.korean > 0 || weights.math > 0 || weights.inquiry > 0;
+    }) ?? false
+  );
+}
+
+/** active edit가 있으면 교정 산식까지 반영한 규칙 클러스터 서명. */
+function ruleReviewSignature(
+  row: {
+    scoreType: string;
+    formulaJson: unknown;
+    englishPolicyJson: unknown;
+    historyPolicyJson: unknown;
+    inquiryPolicyJson: unknown;
+    eligibilityJson: unknown;
+    unit?: { universityId: string };
+  },
+  decision?: ReviewDecisionRecord | null,
+): string {
+  const corrected = decision?.verdict === "edit" ? (decision.correctedFields ?? {}) : {};
+  return ruleSignature({
+    unit: row.unit,
+    scoreType: stringField(corrected, "scoreType") ?? row.scoreType,
+    formulaJson: jsonField(corrected, "formulaJson") ?? formulaFromCorrected(corrected) ?? row.formulaJson,
+    englishPolicyJson:
+      jsonField(corrected, "englishPolicyJson") ?? jsonField(corrected, "englishPolicy") ?? row.englishPolicyJson,
+    historyPolicyJson:
+      jsonField(corrected, "historyPolicyJson") ?? jsonField(corrected, "historyPolicy") ?? row.historyPolicyJson,
+    inquiryPolicyJson:
+      jsonField(corrected, "inquiryPolicyJson") ?? jsonField(corrected, "inquiryPolicy") ?? row.inquiryPolicyJson,
+    eligibilityJson:
+      jsonField(corrected, "eligibilityJson") ?? jsonField(corrected, "eligibility") ?? row.eligibilityJson,
+  });
+}
+
 /** 규칙 클러스터 서명: 대학+환산식+정책이 바이트 동일하면 같은 식으로 본다. */
 function ruleSignature(row: {
   scoreType: string;
-  formulaJson: Prisma.JsonValue;
-  englishPolicyJson: Prisma.JsonValue;
-  historyPolicyJson: Prisma.JsonValue;
-  inquiryPolicyJson: Prisma.JsonValue;
-  eligibilityJson: Prisma.JsonValue;
+  formulaJson: unknown;
+  englishPolicyJson: unknown;
+  historyPolicyJson: unknown;
+  inquiryPolicyJson: unknown;
+  eligibilityJson: unknown;
   unit?: { universityId: string };
 }): string {
   return [
@@ -461,11 +586,11 @@ function ruleSignature(row: {
     stableJson(row.historyPolicyJson),
     stableJson(row.inquiryPolicyJson),
     stableJson(row.eligibilityJson),
-  ].join(" ");
+  ].join("\u0000");
 }
 
 /** 키 정렬된 JSON 직렬화 — 키 순서 차이로 클러스터가 갈라지지 않게. */
-function stableJson(value: Prisma.JsonValue): string {
+function stableJson(value: unknown): string {
   const seen = (v: unknown): unknown => {
     if (Array.isArray(v)) return v.map(seen);
     if (v && typeof v === "object") {
@@ -552,8 +677,35 @@ function decisionRecord(row: {
   };
 }
 
-function evidenceRecord(row: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ruleId" && key !== "outcomeId"));
+function evidenceRecord(row: Record<string, unknown>, targetYear: number | null): Record<string, unknown> {
+  const record = Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ruleId" && key !== "outcomeId"));
+  const sourceWarnings = evidenceSourceWarnings(record, targetYear);
+  if (sourceWarnings.length > 0) record.sourceWarnings = sourceWarnings;
+  return record;
+}
+
+function evidenceSourceWarnings(record: Record<string, unknown>, targetYear: number | null): string[] {
+  const warnings: string[] = [];
+  const documentYearStatus = stringField(record, "documentYearStatus");
+  const primaryYear = numberField(record, "documentPrimaryAdmissionYear");
+
+  if (documentYearStatus && documentYearStatus !== "primary_year_matched") {
+    warnings.push(`문서 연도 상태가 ${documentYearStatus}입니다. 최신 검수 메모의 공식 원문을 기준으로 재확인하세요.`);
+  }
+  if (record.promotionSafeSourceYear === false) {
+    warnings.push("이 문서는 추출 대상 연도와 1차 문서 연도가 달라 자동 승격 근거로 쓰면 안 됩니다.");
+  }
+  if (targetYear && primaryYear && primaryYear !== targetYear) {
+    warnings.push(`문서 제목 기준 학년도 ${primaryYear}와 검수 대상 ${targetYear}학년도가 다릅니다.`);
+  }
+
+  const sourcePath = stringField(record, "sourcePath");
+  const sourceYear = sourcePath?.match(/(?:^|\/)hwp-text\/(20[1-3][0-9])(?:\/|$)/)?.[1];
+  if (targetYear && sourceYear && Number(sourceYear) !== targetYear) {
+    warnings.push(`수집 evidence 경로가 hwp-text/${sourceYear}입니다. ${targetYear}학년도 근거인지 별도 확인이 필요합니다.`);
+  }
+
+  return [...new Set(warnings)];
 }
 
 function recordJson(value: unknown): Record<string, unknown> | null {
@@ -592,6 +744,11 @@ function formulaString(value: unknown, key: string): string | null {
 function stringField(record: Record<string, unknown>, key: string): string | null {
   const raw = record[key];
   return typeof raw === "string" ? raw : null;
+}
+
+function numberField(record: Record<string, unknown>, key: string): number | null {
+  const raw = record[key];
+  return typeof raw === "number" ? raw : null;
 }
 
 function jsonField(record: Record<string, unknown>, key: string): unknown | null {

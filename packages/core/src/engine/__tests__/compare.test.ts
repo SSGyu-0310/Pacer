@@ -20,6 +20,14 @@ const approx = (score: number): ConvertedScore => ({
   approximations: ["percentile_composite"],
 });
 
+const relative = (score: number): ConvertedScore => ({
+  unitId: "unit-std",
+  convertedScore: score,
+  method: "relative",
+  scale: 100,
+  approximations: ["formula_required_input"],
+});
+
 describe("compareToHistorical (§8.3, §18.1 입결 대비 점수차)", () => {
   it("정확 환산은 환산점수 컷과 비교: 563.5 − 560 = 3.5", () => {
     const r = compareToHistorical(exact(563.5), historicalRef());
@@ -31,6 +39,12 @@ describe("compareToHistorical (§8.3, §18.1 입결 대비 점수차)", () => {
     const r = compareToHistorical(approx(93.9), historicalRef());
     expect(r.historicalReferenceScore).toBe(92);
     expect(r.scoreGap).toBe(1.9);
+  });
+
+  it("공식식 기반 상대비교도 백분위 컷과 비교: 94 − 92 = 2", () => {
+    const r = compareToHistorical(relative(94), historicalRef());
+    expect(r.historicalReferenceScore).toBe(92);
+    expect(r.scoreGap).toBe(2);
   });
 
   it("음수 gap도 그대로 계산한다", () => {

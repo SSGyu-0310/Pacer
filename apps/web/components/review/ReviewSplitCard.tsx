@@ -18,6 +18,7 @@ export function ReviewSplitCard({ detail }: { detail: Detail | null }) {
   const textPreview = String(detail.evidence?.textPreview ?? detail.evidence?.rowText ?? "");
   const rawPath = String(detail.evidence?.rawPath ?? "");
   const attachmentUrl = String(detail.evidence?.attachmentUrl ?? "");
+  const sourceWarnings = warningList(detail.evidence?.sourceWarnings);
   const lines = splitSignals(textPreview);
 
   return (
@@ -48,6 +49,14 @@ export function ReviewSplitCard({ detail }: { detail: Detail | null }) {
           ) : null}
         </div>
       </div>
+
+      {sourceWarnings.length > 0 ? (
+        <div className="mb-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+          {sourceWarnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         {lines.length > 0 ? (
@@ -103,6 +112,11 @@ function RawSection({
       </pre>
     </details>
   );
+}
+
+function warningList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
 /** "a=1;b=2" 형태 시그널 문자열을 [key, value] 목록으로. 형태가 아니면 빈 배열. */

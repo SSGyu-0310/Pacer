@@ -1,29 +1,30 @@
 {
   "provider": "pacer-reference-data",
   "artifactType": "core_rule_db_audit_summary",
-  "generatedAt": "2026-06-19T17:36:30.297Z",
-  "status": "ok",
-  "errors": [],
+  "generatedAt": "2026-06-24T20:50:38.146Z",
+  "status": "failed",
+  "errors": [
+    "local decisions missing in DB: 03677474-8013-5212-80b4-7cc2e8b37189,062d5298-7d76-5824-b3f6-313b3dc5cd79,0d6f18fb-7648-5fcc-afe2-5133fb666754,15173b51-fa28-5c67-aca4-8ba1bb165c4a,2d255296-bcbd-5e72-800b-3f32dad01e73,33cf8cda-8430-5596-b368-8e46ce7158ce,341c416f-cb57-5052-a1c4-db2f901321be,49a68bac-965b-5c53-a269-74ba199eb3bc,564ab002-e533-5278-9f00-4ba21630b0a0,83be9d2b-ad96-56fa-ae9c-eab795b2909b"
+  ],
   "inputs": {
     "decisions": "packages/reference-data/data/review/review-decisions.jsonl"
   },
   "counts": {
     "localCoreRuleFillDecisions": 820,
-    "activeDbCoreRuleFillDecisions": 820,
-    "supersededDbCoreRuleFillDecisions": 266,
-    "activeDbReviewDecisionsAllReviewers": 820,
-    "dbRulesCoveredByActiveDecisions": 820,
+    "activeDbCoreRuleFillDecisions": 802,
+    "supersededDbCoreRuleFillDecisions": 284,
+    "activeDbReviewDecisionsAllReviewers": 2114,
+    "dbRulesCoveredByActiveDecisions": 802,
     "localCoreRuleFillDecisionsByStatus": {
       "parsed": 808,
       "verified": 12
     },
     "dbRulesCoveredByActiveDecisionsByStatus": {
-      "parsed": 808,
-      "verified": 12
+      "parsed": 802
     }
   },
   "invariants": {
-    "localDecisionsMissingInDb": 0,
+    "localDecisionsMissingInDb": 18,
     "extraActiveDbDecisions": 0,
     "activeDecisionsTargetMissingRules": 0,
     "activeDecisionRulesWithStatusMismatch": 0,

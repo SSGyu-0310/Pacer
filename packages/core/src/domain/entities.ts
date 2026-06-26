@@ -73,7 +73,7 @@ export interface AdmissionUnitRef {
 }
 
 /** 환산 결과 (§8.2) */
-export type ConversionMethod = "exact" | "approx" | "unsupported";
+export type ConversionMethod = "exact" | "relative" | "approx" | "unsupported";
 export interface ConvertedScore {
   unitId: string;
   convertedScore: number | null;
@@ -104,17 +104,30 @@ export interface EnglishPolicy {
   scoreMax?: number;
 }
 
-/** 한국사 정책 (§9.8 history_policy_json) — 등급별 감점(환산 만점 단위 점수) */
+/** 한국사 정책 (§9.8 history_policy_json) — 등급별 감점/가산(환산 만점 단위 점수) */
 export interface HistoryPolicy {
+  /** 미지정 시 기존 데이터 호환을 위해 deduction으로 해석한다. */
+  mode?: "deduction" | "addition";
   byGrade: Record<number, number>;
 }
 
 /** 탐구 반영 정책 (§9.8 inquiry_policy_json) */
+export interface InquiryConversionTable {
+  /** 현재 지원 범위: 수능 백분위 → 대학 자체 변환표준점수. */
+  from: "percentile";
+  /** 변환표준점수 만점. 미지정 시 표준점수 만점(200)으로 해석한다. */
+  scoreMax?: number;
+  /** 백분위 정수값 → 대학 변환표준점수. */
+  byPercentile: Record<number, number>;
+}
+
 export interface InquiryPolicy {
   /** 반영 과목 수 */
   count: 1 | 2;
-  /** 평균 반영 / 상위 1과목 반영 (§18.1) */
-  mode: "average" | "best_one";
+  /** 평균 반영 / 상위 1과목 반영 / 합산 반영 (§18.1) */
+  mode: "average" | "best_one" | "sum";
+  /** 대학 자체 탐구 변환표준점수표. 있으면 탐구 표준점수 대신 표 값을 반영한다. */
+  conversionTable?: InquiryConversionTable;
   /** 변환표준점수 리스크(변표 미공개·변동 큼) — §8.3 보정, science_conversion_risk */
   conversionRisk?: boolean;
 }
@@ -126,11 +139,144 @@ export interface SubjectWeights {
   inquiry: number;
 }
 
+export interface SubjectScoreMaxes {
+  korean?: number;
+  math?: number;
+  inquiry?: number;
+}
+
+export interface SubjectBaseScores {
+  korean?: number;
+  math?: number;
+  inquiry?: number;
+}
+
+export type SubjectScoreMetric = "standardScore" | "percentile";
+
+export interface SubjectScoreTypes {
+  korean?: SubjectScoreMetric;
+  math?: SubjectScoreMetric;
+  inquiry?: SubjectScoreMetric;
+}
+
+export interface SubjectAdjustmentPolicy {
+  subject: "korean" | "math" | "inquiry";
+  /** 적용 조건. 예: 수학 미적분/기하 가산이면 requiredSelections로 제한한다. */
+  requiredSelections?: string[];
+  /** 탐구 가산 조건. 예: 과탐 응시자 가산. */
+  requiredInquiryCategory?: "science" | "social";
+  /** 예: 과탐 2과목 모두 응시한 경우에만 탐구 가산 적용. */
+  requiredInquiryCategoryCount?: 1 | 2;
+  /** 점수 basis 배율. 예: 5% 가산이면 1.05. */
+  multiplier?: number;
+  /** 점수 basis에 더할 고정점. 예: 과탐 조정점수 +3. */
+  points?: number;
+  /** true면 조정 후 과목 basis 만점을 넘지 않게 자른다. 기본값은 초과 허용. */
+  capAtMax?: boolean;
+}
+
+export interface FinalScoreAdjustmentPolicy {
+  subject: "korean" | "math" | "inquiry";
+  /** 적용 조건. 예: 수학 미적분/기하 표준점수의 7% 가산. */
+  requiredSelections?: string[];
+  /** 탐구 가산 조건. 예: 사탐/과탐 백분위의 3%를 최종점에 더함. */
+  requiredInquiryCategory?: "science" | "social";
+  /** 예: 과탐 2과목 모두 응시한 경우에만 가산 적용. */
+  requiredInquiryCategoryCount?: 1 | 2;
+  /** 최종점에 더할 원점수 출처. */
+  pointsFrom: "standardScore" | "percentile";
+  /** 최종점 가산 배율. 예: 백분위 83의 3%면 0.03. */
+  multiplier: number;
+  /** 해당 조정 정책으로 더할 수 있는 최대 점수. */
+  maxPoints?: number;
+}
+
+export interface FormulaRequiredInputPolicy {
+  /**
+   * 산식 계산에 필요하지만 현재 사용자 점수/고정 rule만으로는 채울 수 없는 공식 입력값.
+   * 예: 전남대식 "영역별 전국 최고 표준점수"는 수능 이후에야 확정된다.
+   */
+  kind: "national_max_standard_score" | "conversion_table" | "other";
+  subjects?: Array<"korean" | "math" | "inquiry">;
+  label?: string;
+  availability?: "post_csat" | "manual" | "unavailable";
+}
+
+export interface SubjectSelectionGroup {
+  count: 1 | 2 | 3 | 4;
+  subjects: Array<"korean" | "math" | "english" | "inquiry">;
+  /** 후보 중 반드시 포함해야 하는 과목. 예: 수학 필수 포함 우수 3영역. */
+  requiredSubjects?: Array<"korean" | "math" | "english" | "inquiry">;
+  /** 그룹 안에서 선택된 과목을 성적 내림차순으로 정렬한 뒤 적용할 순위별 반영비 */
+  rankWeights: number[];
+}
+
 /** 상위 과목 선택식 (§9.8 formula_json.selectionPolicy) */
 export interface SubjectSelectionPolicy {
   mode: "best_n_subjects";
-  count: 2 | 3;
+  count: 1 | 2 | 3 | 4;
   subjects: Array<"korean" | "math" | "english" | "inquiry">;
+  /**
+   * 후보 중 반드시 포함해야 하는 과목.
+   * 예: "수학 포함 우수 3영역"은 requiredSubjects:["math"] + count:3.
+   */
+  requiredSubjects?: Array<"korean" | "math" | "english" | "inquiry">;
+  /**
+   * 선택된 과목을 성적 내림차순으로 정렬한 뒤 적용할 순위별 반영비.
+   * 예: 우수 4영역 순 40/30/20/10이면 [40, 30, 20, 10].
+   * 없으면 기존 동작처럼 선택 과목 단순 평균을 사용한다.
+   */
+  rankWeights?: number[];
+  /**
+   * 서로 다른 후보 과목 묶음을 따로 정렬하는 선택식.
+   * 예: 가천대 일반식은 국/수 우수순 40/30 + 영/탐 우수순 20/10.
+   */
+  groups?: SubjectSelectionGroup[];
+}
+
+export interface FormulaAlternativePolicy {
+  /** 대체 산식별 결합 방식. 미지정 시 기본 산식 방식을 따른다. */
+  calculationMode?: "weighted_average" | "weighted_sum" | "normalized_sum";
+  /** 대체 산식의 국어/수학/탐구 반영비. 미지정 정책은 기본 산식을 재사용한다. */
+  weights: SubjectWeights;
+  /** 대체 산식별 총점이 다른 특수 케이스. 보통은 rule.totalScale을 사용한다. */
+  totalScale?: number;
+  /** 대체 산식에 비수능 구성요소가 있을 때 전체 전형에서 수능이 차지하는 공식 반영비. */
+  csatWeight?: number;
+  /** 대체 산식별 과목 점수 기준이 다를 때만 지정한다. */
+  subjectScoreTypes?: SubjectScoreTypes;
+  /** 대체 산식별 과목 원점수 만점이 다를 때만 지정한다. */
+  subjectScoreMaxes?: SubjectScoreMaxes;
+  /** 대체 산식별 과목 기본점수가 다를 때만 지정한다. */
+  subjectBaseScores?: SubjectBaseScores;
+  /** 대체 산식 안에서 우수영역 선택식이 다를 때만 지정한다. */
+  selectionPolicy?: SubjectSelectionPolicy;
+  /** 대체 산식별 가산 정책이 다를 때만 지정한다. */
+  subjectAdjustments?: SubjectAdjustmentPolicy[];
+  /** 대체 산식별 최종점 가산 정책이 다를 때만 지정한다. */
+  finalAdjustments?: FinalScoreAdjustmentPolicy[];
+  /** 대체 산식 계산에 필요한 미확정/외부 공식 입력값. 있으면 exact를 닫는다. */
+  requiredInputs?: FormulaRequiredInputPolicy[];
+  /** 대체 산식에 실기·학생부 등 수능 외 구성요소가 있으면 전체 exact는 닫고 수능 파트 상대비교만 허용한다. */
+  externalComponents?: ExternalComponentPolicy[];
+  /** 대체 산식별 영어 등급 정책이 다를 때만 지정한다. */
+  englishPolicy?: EnglishPolicy;
+  /** 대체 산식별 한국사 등급 정책이 다를 때만 지정한다. */
+  historyPolicy?: HistoryPolicy;
+  /** 대체 산식별 탐구 선택/집계 정책이 다를 때만 지정한다. */
+  inquiryPolicy?: InquiryPolicy;
+  /** 대체 산식별 응시 제한이 다를 때만 지정한다. */
+  eligibility?: EligibilityRules;
+}
+
+export interface ExternalComponentPolicy {
+  kind: "student_record" | "practical" | "interview" | "essay" | "document" | "other";
+  /** 공식 반영비. 예: 수능30+실기70이면 practical weight=70. */
+  weight: number;
+  /** 원문 표기 보존용. 예: "실기", "학생부교과" */
+  label?: string;
+  /** 해당 점수가 전체 환산에 필수인지. 기본적으로 필수로 해석한다. */
+  required?: boolean;
 }
 
 /** 지원 가능 조건 (§9.8 eligibility_json) */
@@ -149,8 +295,35 @@ export interface AdmissionRuleData {
   scoreType: ScoreType;
   /** 환산 만점 (예: 1000, 100) */
   totalScale: number;
+  /** 실기·학생부 등 비수능 구성요소가 있을 때 전체 전형에서 수능이 차지하는 공식 반영비. */
+  csatWeight?: number;
+  /**
+   * 과목 결합 방식.
+   * - weighted_average(기본): Σ(과목 basis / 과목만점 × 반영비) / 반영비합 × totalScale.
+   * - weighted_sum: Σ(과목 basis × 계수) + 영어/한국사/가산점. 서강대식 A/B 직접 가중합에 사용.
+   * - normalized_sum: Σ(과목 기본점수 + basis / 과목만점 × 실질반영점수) + 영어/한국사/가산점.
+   *   충북대식 "기본점수 + 취득점수 ÷ 최고점 × 실질반영점수" 산식에 사용.
+   */
+  calculationMode?: "weighted_average" | "weighted_sum" | "normalized_sum";
   weights: SubjectWeights;
+  /** 과목별 점수 기준. mixed에서 탐구가 백분위인지 변환표인지 명시할 때 사용한다. */
+  subjectScoreTypes?: SubjectScoreTypes;
+  /** 국어/수학/탐구 표준점수 또는 변환표준점수의 공식 만점. 미지정 시 기존 200/100 기준. */
+  subjectScoreMaxes?: SubjectScoreMaxes;
+  /** 국어/수학/탐구 영역별 기본점수. normalized_sum에서만 의미가 있다. */
+  subjectBaseScores?: SubjectBaseScores;
+  subjectAdjustments?: SubjectAdjustmentPolicy[];
+  finalAdjustments?: FinalScoreAdjustmentPolicy[];
+  /** 수능 이후 확정되는 전국최고표준점수/변환표 등 미해결 공식 입력값. 있으면 exact를 닫는다. */
+  requiredInputs?: FormulaRequiredInputPolicy[];
   selectionPolicy?: SubjectSelectionPolicy;
+  formulaAlternatives?: FormulaAlternativePolicy[];
+  /**
+   * 실기·학생부·면접처럼 현재 사용자 입력(수능 성적)만으로 계산할 수 없는 구성요소.
+   * 원문 산식을 잃지 않기 위한 메타데이터이며, 있으면 전체 exact는 닫고
+   * 수능 반영구조만으로 low-confidence relative 비교를 허용한다.
+   */
+  externalComponents?: ExternalComponentPolicy[];
   englishPolicy: EnglishPolicy;
   historyPolicy: HistoryPolicy;
   inquiryPolicy: InquiryPolicy;
@@ -164,7 +337,7 @@ export interface HistoricalRef {
   year: number;
   /** 환산점수 기준 컷(정확 환산 비교용) */
   cutScore: number | null;
-  /** 백분위 기준 컷(근사 비교용) */
+  /** 백분위 기준 컷(relative/근사 비교용) */
   percentileCut: number | null;
   competitionRate: number | null;
   /** 추가합격 인원 */

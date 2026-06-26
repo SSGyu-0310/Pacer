@@ -46,7 +46,6 @@ PARTIAL_EXACT_TERMS = (
     "가산점은 엔진 미지원",
     "가산점 미반영",
     "가산은 현 엔진 미지원",
-    "한국사도 가산점",
     "감점표는 추출 원문",
     "자동승격 필드에서는 제외",
     "현 엔진 미지원",
@@ -110,6 +109,14 @@ def english_policy(eng):
     return out
 
 
+def history_policy(hist):
+    """한국사 정책 — 기존 JSON 호환을 위해 mode는 있을 때만 보존."""
+    out = {"byGrade": numeric_by_grade(hist.get("byGrade"))}
+    if hist.get("mode") in ("deduction", "addition"):
+        out["mode"] = hist["mode"]
+    return out
+
+
 def corrected_fields(fill, track):
     weights = pick(track, fill, "weights")
     if not isinstance(weights, dict):
@@ -133,7 +140,7 @@ def corrected_fields(fill, track):
             },
         },
         "englishPolicyJson": english_policy(eng),
-        "historyPolicyJson": {"byGrade": numeric_by_grade(hist.get("byGrade"))},
+        "historyPolicyJson": history_policy(hist),
         "inquiryPolicyJson": {
             "count": int(inq.get("count", 2)),
             "mode": inq.get("mode", "average"),
@@ -141,9 +148,39 @@ def corrected_fields(fill, track):
         },
         "eligibilityJson": pick(track, fill, "eligibility") or {},
     }
+    calculation_mode = pick(track, fill, "calculationMode", "calculation_mode")
+    if calculation_mode in ("weighted_average", "weighted_sum", "normalized_sum"):
+        cf["formulaJson"]["calculationMode"] = calculation_mode
+    csat_weight = pick(track, fill, "csatWeight", "csat_weight")
+    if isinstance(csat_weight, (int, float)) and csat_weight >= 0:
+        cf["formulaJson"]["csatWeight"] = csat_weight
+    subject_score_types = pick(track, fill, "subjectScoreTypes", "scoreMetrics")
+    if isinstance(subject_score_types, dict):
+        cf["formulaJson"]["subjectScoreTypes"] = subject_score_types
+    score_maxes = pick(track, fill, "scoreMaxes", "subjectScoreMaxes")
+    if isinstance(score_maxes, dict):
+        cf["formulaJson"]["scoreMaxes"] = score_maxes
+    subject_base_scores = pick(track, fill, "subjectBaseScores", "baseScores")
+    if isinstance(subject_base_scores, dict):
+        cf["formulaJson"]["subjectBaseScores"] = subject_base_scores
     selection_policy = pick(track, fill, "selectionPolicy")
     if isinstance(selection_policy, dict):
         cf["formulaJson"]["selectionPolicy"] = selection_policy
+    subject_adjustments = pick(track, fill, "subjectAdjustments")
+    if isinstance(subject_adjustments, list) and subject_adjustments:
+        cf["formulaJson"]["subjectAdjustments"] = subject_adjustments
+    final_adjustments = pick(track, fill, "finalAdjustments")
+    if isinstance(final_adjustments, list) and final_adjustments:
+        cf["formulaJson"]["finalAdjustments"] = final_adjustments
+    alternatives = pick(track, fill, "formulaAlternatives", "alternatives")
+    if isinstance(alternatives, list) and alternatives:
+        cf["formulaJson"]["alternatives"] = alternatives
+    external_components = pick(track, fill, "externalComponents")
+    if isinstance(external_components, list) and external_components:
+        cf["formulaJson"]["externalComponents"] = external_components
+    conversion_table = inq.get("conversionTable")
+    if isinstance(conversion_table, dict):
+        cf["inquiryPolicyJson"]["conversionTable"] = conversion_table
     return cf
 
 

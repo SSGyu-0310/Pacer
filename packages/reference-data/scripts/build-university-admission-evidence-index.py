@@ -192,6 +192,8 @@ def pdf_snippet_evidence(snippets: list[dict[str, Any]], year: int) -> list[dict
     for snippet in snippets:
         if int(snippet.get("year") or 0) != year:
             continue
+        if str(snippet.get("status") or "candidate") != "candidate":
+            continue
         role = str(snippet.get("snippetRole") or "unknown")
         rows.append(
             base_evidence_row(
@@ -211,6 +213,10 @@ def pdf_snippet_evidence(snippets: list[dict[str, Any]], year: int) -> list[dict
                     "endLine": snippet.get("endLine"),
                     "matchedKeywords": snippet.get("matchedKeywords"),
                     "snippetSha256": snippet.get("snippetSha256"),
+                    "documentDetectedAdmissionYears": snippet.get("documentDetectedAdmissionYears") or [],
+                    "documentTitleAdmissionYears": snippet.get("documentTitleAdmissionYears") or [],
+                    "documentPrimaryAdmissionYear": snippet.get("documentPrimaryAdmissionYear"),
+                    "documentYearStatus": snippet.get("documentYearStatus"),
                 },
             )
         )
@@ -221,6 +227,8 @@ def hwp_snippet_evidence(snippets: list[dict[str, Any]], year: int) -> list[dict
     rows: list[dict[str, Any]] = []
     for snippet in snippets:
         if int(snippet.get("year") or 0) != year:
+            continue
+        if str(snippet.get("status") or "candidate") != "candidate":
             continue
         role = str(snippet.get("snippetRole") or "unknown")
         rows.append(
@@ -240,6 +248,11 @@ def hwp_snippet_evidence(snippets: list[dict[str, Any]], year: int) -> list[dict
                     "endLine": snippet.get("endLine"),
                     "matchedKeywords": snippet.get("matchedKeywords"),
                     "snippetSha256": snippet.get("snippetSha256"),
+                    "documentDetectedAdmissionYears": snippet.get("documentDetectedAdmissionYears") or [],
+                    "documentTitleAdmissionYears": snippet.get("documentTitleAdmissionYears") or [],
+                    "documentPrimaryAdmissionYear": snippet.get("documentPrimaryAdmissionYear"),
+                    "documentYearStatus": snippet.get("documentYearStatus"),
+                    "promotionSafeSourceYear": snippet.get("promotionSafeSourceYear"),
                 },
             )
         )

@@ -1,5 +1,10 @@
 import { assertNoBannedPhrases } from "./banned-words";
-import { extractProposalSchema, type ExtractInput, type ExtractProposal } from "./extract-schema";
+import {
+  EXTRACT_PROMPT_VERSION,
+  extractProposalSchema,
+  type ExtractInput,
+  type ExtractProposal,
+} from "./extract-schema";
 import { EXTRACT_SYSTEM_PROMPT } from "./extract-prompts";
 
 export interface ExtractLlmClient {
@@ -91,7 +96,7 @@ export class LlmExtractGateway {
     return {
       proposal: parsed,
       modelName: this.client.modelName,
-      promptVersion: "extract-v1",
+      promptVersion: EXTRACT_PROMPT_VERSION,
     };
   }
 }

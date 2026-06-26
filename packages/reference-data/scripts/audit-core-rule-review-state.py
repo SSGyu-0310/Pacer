@@ -48,7 +48,6 @@ PARTIAL_EXACT_TERMS = (
     "가산점은 엔진 미지원",
     "가산점 미반영",
     "가산은 현 엔진 미지원",
-    "한국사도 가산점",
     "감점표는 추출 원문",
     "자동승격 필드에서는 제외",
     "현 엔진 미지원",
@@ -163,7 +162,7 @@ def main() -> None:
         scope_key = decision.get("approval_scope_key") or decision.get("approvalScopeKey")
         if english.get("mode") == "ratio" and not positive_number(english.get("weight")):
             ratio_decisions_missing_weight.append(decision.get("target_id") or decision.get("targetId"))
-        if inquiry.get("count") not in (1, 2) or inquiry.get("mode") not in ("average", "best_one"):
+        if inquiry.get("count") not in (1, 2) or inquiry.get("mode") not in ("average", "best_one", "sum"):
             bad_inquiry.append(decision.get("target_id") or decision.get("targetId"))
         if scope_key in partial_scope_keys and reviewed_status in EXACT_STATUSES:
             exact_decisions_for_partial_fills.append(
@@ -309,8 +308,32 @@ def should_auto_downgrade_to_parsed(row: dict[str, Any]) -> bool:
     explicit = row.get("verifiedStatus") or row.get("reviewedVerifiedStatus")
     if explicit == "parsed":
         return True
+    if has_external_components(row):
+        return True
     text = " ".join(str(value) for value in row.get("uncertain") or [])
     return any(term in text for term in PARTIAL_EXACT_TERMS)
+
+
+def has_external_components(row: dict[str, Any]) -> bool:
+    if non_empty_list(row.get("externalComponents")):
+        return True
+    if non_empty_list(row.get("formulaAlternatives")):
+        for alternative in row["formulaAlternatives"]:
+            if isinstance(alternative, dict) and non_empty_list(alternative.get("externalComponents")):
+                return True
+    for track in row.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        if non_empty_list(track.get("externalComponents")):
+            return True
+        for alternative in track.get("formulaAlternatives") or track.get("alternatives") or []:
+            if isinstance(alternative, dict) and non_empty_list(alternative.get("externalComponents")):
+                return True
+    return False
+
+
+def non_empty_list(value: Any) -> bool:
+    return isinstance(value, list) and len(value) > 0
 
 
 def valid_raw_evidence(row: dict[str, Any], repo_root: Path) -> bool:

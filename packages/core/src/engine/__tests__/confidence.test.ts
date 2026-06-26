@@ -32,6 +32,16 @@ describe("scoreConfidence (§8.4)", () => {
     ).toBe("low");
   });
 
+  it("낮음: 공식식 기반 상대비교", () => {
+    expect(
+      scoreConfidence({
+        method: "relative",
+        hasApproximations: true,
+        hasHistorical: true,
+      }),
+    ).toBe("low");
+  });
+
   it("제한: 환산 불가", () => {
     expect(
       scoreConfidence({

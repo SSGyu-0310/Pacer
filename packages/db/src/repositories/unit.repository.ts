@@ -4,7 +4,7 @@ import type {
   Cycle,
   UnitRepository,
 } from "@pacer/core";
-import type { Confidence } from "@pacer/shared";
+import type { Confidence, ReviewVerdict, VerifiedStatus } from "@pacer/shared";
 import type { PrismaClient } from "@prisma/client";
 import { mapRule } from "./rule-mapping";
 
@@ -48,13 +48,16 @@ export class PrismaUnitRepository implements UnitRepository {
         historicalOutcomes: { orderBy: { year: "desc" }, take: 1 },
       },
     });
+    const latestRuleDecisions = await this.latestRuleDecisions(rows);
     const fallbackHistorical = await this.fallbackHistoricalByName(
       rows.filter((row) => row.historicalOutcomes.length === 0),
       filter.admissionYear,
+      latestRuleDecisions,
     );
 
     return rows.map((row): AnalysisCandidate => {
-      const rule = mapRule(row.rules[0] ?? null);
+      const rawRule = row.rules[0] ?? null;
+      const rule = mapRuleWithDecision(rawRule, latestRuleDecisions.get(rawRule?.id ?? ""));
       const directHistorical = row.historicalOutcomes[0];
       const historical =
         historicalCompatibleWithRule(rule, directHistorical)
@@ -88,6 +91,7 @@ export class PrismaUnitRepository implements UnitRepository {
   private async fallbackHistoricalByName(
     rows: HistoricalFallbackRow[],
     admissionYear: number,
+    latestRuleDecisions: Map<string, RuleDecisionOverlay>,
   ) {
     const output = new Map<
       string,
@@ -126,7 +130,8 @@ export class PrismaUnitRepository implements UnitRepository {
     }
 
     for (const row of rows) {
-      const rule = mapRule(row.rules[0] ?? null);
+      const rawRule = row.rules[0] ?? null;
+      const rule = mapRuleWithDecision(rawRule, latestRuleDecisions.get(rawRule?.id ?? ""));
       const key = historicalFallbackKey(row.universityId, row.name);
       const matches = outcomesByUnitName.get(key) ?? [];
       const compatible = matches.find((outcome) =>
@@ -138,9 +143,35 @@ export class PrismaUnitRepository implements UnitRepository {
     }
     return output;
   }
+
+  private async latestRuleDecisions(
+    rows: { rules: RuleRowForMapping[] }[],
+  ): Promise<Map<string, RuleDecisionOverlay>> {
+    const ruleIds = rows.flatMap((row) => row.rules.map((rule) => rule.id));
+    if (ruleIds.length === 0) return new Map();
+
+    const decisions = await this.db.referenceReviewDecision.findMany({
+      where: {
+        targetKind: "rule",
+        targetId: { in: ruleIds },
+        supersededAt: null,
+        verdict: { in: ["edit", "confirm", "flag"] },
+      },
+      orderBy: { reviewedAt: "desc" },
+    });
+
+    const output = new Map<string, RuleDecisionOverlay>();
+    for (const decision of decisions) {
+      if (!output.has(decision.targetId)) {
+        output.set(decision.targetId, decision);
+      }
+    }
+    return output;
+  }
 }
 
 interface RuleRowForMapping {
+  id: string;
   unitId: string;
   scoreType: string;
   formulaJson: unknown;
@@ -149,6 +180,73 @@ interface RuleRowForMapping {
   historyPolicyJson: unknown;
   inquiryPolicyJson: unknown;
   verifiedStatus: string;
+}
+
+interface RuleDecisionOverlay {
+  targetId: string;
+  verdict: ReviewVerdict;
+  reviewedVerifiedStatus: VerifiedStatus | null;
+  correctedFields: unknown;
+}
+
+function mapRuleWithDecision(
+  row: RuleRowForMapping | null | undefined,
+  decision?: RuleDecisionOverlay,
+): AdmissionRuleData | null {
+  if (!row) return null;
+  if (decision?.verdict === "flag") {
+    return null;
+  }
+  const corrected = recordJson(decision?.correctedFields);
+  if (!corrected) return mapRule(row);
+
+  return mapRule({
+    unitId: row.unitId,
+    scoreType: stringField(corrected, "scoreType") ?? row.scoreType,
+    formulaJson:
+      jsonField(corrected, "formulaJson") ??
+      formulaFromCorrected(corrected) ??
+      row.formulaJson,
+    eligibilityJson:
+      jsonField(corrected, "eligibilityJson") ??
+      jsonField(corrected, "eligibility") ??
+      row.eligibilityJson,
+    englishPolicyJson:
+      jsonField(corrected, "englishPolicyJson") ??
+      jsonField(corrected, "englishPolicy") ??
+      row.englishPolicyJson,
+    historyPolicyJson:
+      jsonField(corrected, "historyPolicyJson") ??
+      jsonField(corrected, "historyPolicy") ??
+      row.historyPolicyJson,
+    inquiryPolicyJson:
+      jsonField(corrected, "inquiryPolicyJson") ??
+      jsonField(corrected, "inquiryPolicy") ??
+      row.inquiryPolicyJson,
+    verifiedStatus: decision?.reviewedVerifiedStatus ?? row.verifiedStatus,
+  });
+}
+
+function recordJson(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | null {
+  const raw = record[key];
+  return typeof raw === "string" ? raw : null;
+}
+
+function jsonField(record: Record<string, unknown>, key: string): unknown | null {
+  return key in record ? record[key] : null;
+}
+
+function formulaFromCorrected(record: Record<string, unknown>): Record<string, unknown> | null {
+  const totalScale = record.totalScale;
+  const weights = record.weights;
+  if (typeof totalScale !== "number" || !recordJson(weights)) return null;
+  return { totalScale, weights };
 }
 
 interface HistoricalFallbackRow {

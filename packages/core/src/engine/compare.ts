@@ -6,7 +6,7 @@ import { round2 } from "./constants";
  * score_gap = user_score - historical_cut_score
  *
  * - 정확 환산(exact) → 환산점수 컷(cutScore)과 비교
- * - 근사 비교(approx) → 백분위 컷(percentileCut)과 비교
+ * - 공식식 기반 상대비교(relative)·근사 비교(approx) → 백분위 컷(percentileCut)과 비교
  * - 비교 기준이 없으면 gap = null (분석 불가 — §8.2)
  */
 export function compareToHistorical(

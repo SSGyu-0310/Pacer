@@ -190,6 +190,10 @@ def build_snippet(
         "attachmentRole": source.get("attachmentRole"),
         "detectedDocumentRole": source.get("detectedDocumentRole"),
         "documentDetectedAdmissionYears": document_detected_admission_years,
+        "documentTitleAdmissionYears": source.get("documentTitleAdmissionYears") or [],
+        "documentPrimaryAdmissionYear": source.get("documentPrimaryAdmissionYear"),
+        "documentYearStatus": source.get("documentYearStatus"),
+        "promotionSafeSourceYear": source.get("promotionSafeSourceYear"),
         "snippetRole": rule["role"],
         "score": score,
         "pageNumber": 1,
@@ -206,7 +210,7 @@ def build_snippet(
         "textPreview": normalize_space(snippet_text)[:300],
         "text": snippet_text[:4000],
         "extractedAt": datetime.now(timezone.utc).isoformat(),
-        "status": "candidate",
+        "status": "candidate" if source.get("promotionSafeSourceYear") is not False else "source_year_mismatch",
     }
 
 
@@ -279,6 +283,10 @@ def write_csv_index(path: Path, snippets: list[dict[str, Any]]) -> None:
         "campus",
         "sourceLinkRole",
         "detectedDocumentRole",
+        "documentYearStatus",
+        "documentPrimaryAdmissionYear",
+        "promotionSafeSourceYear",
+        "status",
         "snippetRole",
         "score",
         "pageNumber",
@@ -336,11 +344,17 @@ def summarize(
         "snippets": len(snippets),
         "uniqueSnippetSha256": len({str(row.get("snippetSha256") or "") for row in snippets}),
         "bySnippetRole": count_by(snippets, "snippetRole"),
+        "bySnippetStatus": count_by(snippets, "status"),
         "bySourceLinkRole": count_by(snippets, "sourceLinkRole"),
         "byDetectedDocumentRole": count_by(snippets, "detectedDocumentRole"),
+        "byDocumentYearStatus": count_by(snippets, "documentYearStatus"),
+        "promotionUnsafeSourceYearSnippets": sum(
+            1 for row in snippets if row.get("promotionSafeSourceYear") is False
+        ),
         "notes": [
             "Snippets are keyword-scored candidates extracted from HWP/HWPX text output.",
             "Snippet text is capped for manifest size; textPath/rawHwpPath retain the source for full review.",
+            "status=source_year_mismatch snippets are retained for audit but must not be used as promotion evidence.",
             "Candidates require human verification before promotion to AdmissionRule or HistoricalOutcome.",
         ],
     }

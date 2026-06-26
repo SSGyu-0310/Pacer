@@ -20,7 +20,14 @@
 ### 절대 규칙
 - **공식 출처만.** 대학 입학처 2027 정시 모집요강(PDF/HWP) 또는 ADIGA 공식 페이지. 사설 입시업체·블로그·커뮤니티 금지.
 - **추정 금지.** 원문에서 직접 읽은 값만 입력. 못 찾으면 비우고 `uncertain`에 사유를 남긴다.
+- **HWP/HWPX 추출본은 후보 근거다.** 텍스트 추출이 성공해도 곧바로 verified가 아니다. HWP/HWPX는 원본을 Polaris Office 등 GUI에서 열거나 PDF로 내보낸 뒤, 표지/제목의 `2027학년도`, 대학명, 정시/수능 산출 표의 행·열을 눈으로 확인한 경우에만 `evidence_checked`로 본다. 추출 경로·문서 제목 학년도가 대상 연도와 다르면 admin 경고가 뜨며, 최신 검수 메모의 별도 공식 원문 근거를 다시 확인한다.
 - **해석이지 예측이 아니다(§2.1).** 합격 확률·"합격 보장"·"무조건"·"100%"·"진학사보다 정확" 등 금지 표현(§11.4)을 산출물 어디에도 넣지 않는다.
+
+### HWP/HWPX 근거 처리 절차
+- 공식 PDF가 있으면 PDF를 우선 근거로 삼는다.
+- PDF가 없고 HWP/HWPX만 있으면 로컬 Polaris Office에서 원본을 열어 표지/학년도/대학명/정시 수능 산출 표를 확인하고, 가능하면 PDF로 내보낸 뒤 `pdfinfo`, `pdftotext`, `pdftoppm`으로 텍스트와 페이지 이미지를 남긴다.
+- HWPX는 압축 해제/XML 텍스트, HWP는 `hwp5*` 계열 텍스트 추출을 보조 근거로 쓸 수 있다. 하지만 표 행·열 위치가 깨질 수 있으므로 텍스트 추출만으로 `edit/verified`를 만들지 않는다.
+- 검수 메모에는 본 파일 경로, 확인한 페이지/표/행, 읽은 숫자, 해석상 한계를 남긴다. 수동으로 열지 못했거나 표 구조를 확인하지 못한 항목은 `flag`로 둔다.
 
 ---
 
@@ -28,10 +35,10 @@
 
 검수가 운영 결과를 바꾸는 통로는 딱 두 가지다.
 
-1. **rule을 채우면 환산이 풀린다.** 가중치(환산총점·국수탐 비율 등)가 비면 계산엔진은 그 모집단위를 `unsupported`/`approx`로 떨어뜨린다. rule을 유효하게 채워 넣으면 `mapRule`이 인식해 **`exact`(정확 환산)** 로 바뀐다. 검수 도구는 이 판정을 클라이언트에서 미리 미러링해 "exact 풀림 ✓/✕"를 실시간으로 보여준다.
+1. **rule을 채우면 분석 경로가 열린다.** 가중치(환산총점·국수탐 비율 등)가 비면 계산엔진은 그 모집단위를 `unsupported`/`approx`로 떨어뜨린다. rule을 유효하게 채워 넣으면 `mapRule`이 인식해 **`exact`(정확 환산)** 또는 **`relative`(공식식 기반 상대비교)** 로 분석한다. 수능 이후 공개되는 변환표/전국최고점처럼 exact를 막는 공식 입력값이 남아 있어도, 공개된 반영비로 상대비교가 가능하면 `relative` + 낮은 신뢰도로 서비스 목적을 살린다. 검수 미완료 규칙만 `approx` 근사 비교로 남긴다. 검수 도구는 이 판정을 클라이언트에서 "exact 풀림" 또는 "근사 비교 가능"으로 미리 보여준다.
 2. **confidence를 낮추면 band가 보수화된다.** 입결 confidence를 낮게 매기면 분석이 더 보수적으로(적정/안정 쪽으로) 처리된다 — 불확실한 데이터로 위험한 단정을 하지 않게 하는 안전장치다.
 
-즉 rule 입력은 "분석이 켜지냐"를, confidence 검수는 "분석이 얼마나 단정적이냐"를 결정한다. 둘 다 **원문 대조 후에만** 손대야 한다.
+즉 rule 입력은 "정확/상대비교/근사 분석이 켜지냐"를, confidence 검수는 "분석이 얼마나 단정적이냐"를 결정한다. 둘 다 **원문 대조 후에만** 손대야 한다.
 
 ---
 
@@ -67,12 +74,13 @@
 
 ### rule 저장 흐름
 1. 우측 `RuleFieldEditor`에서 환산총점·가중치(국/수/탐)·영어·탐구·(고급)한국사/지원자격을 채운다.
-2. 패널 상단 배지가 **"✓ 풀림 — 저장하면 정확 환산이 켜집니다"** 가 되어야 저장 버튼이 활성화된다(`exact` 미충족이면 저장 불가).
-3. `저장(Enter)` → verdict `edit` + `reviewed_verified_status: "verified"` + `corrected_fields` + `apply_to_cluster: true` 로 DB 기록. 클러스터면 "N개 모집단위에 일괄 저장" 토스트가 뜬다.
+2. 패널 상단 배지가 **"✓ 풀림 — 저장하면 정확 환산이 켜집니다"** 또는 **"△ 근사 비교 가능 — exact는 닫고 낮은 신뢰도로 반영됩니다"** 가 되어야 저장 버튼이 활성화된다. 후자는 `requiredInputs`/mixed 변표 근사처럼 공식 구조는 확인됐지만 최종 exact 상수가 아직 없는 경우다.
+3. `저장(Enter)` → verdict `edit` + `reviewed_verified_status: "verified"` + `corrected_fields` + `apply_to_cluster: true` 로 DB 기록. exact가 닫힌 저장은 API 응답의 `would_unlock_exact=false`로 남고, 서비스는 낮은 신뢰도 `relative` 상대비교로 처리한다. 클러스터면 "N개 모집단위에 일괄 저장" 토스트가 뜬다.
    - 이때 현재 선택된 검수자(`reviewer=shin|kwon`)가 함께 저장된다. 검수자를 선택하지 않으면 저장되지 않는다.
 4. **AI초안 확정 루프**: AI 초안이 있는 rule은 상단 `AI초안 확정` 버튼(또는 `a`로 일괄)으로 초안 그대로 verified 확정 가능. 초안을 그대로 믿지 말고 원문과 맞을 때만.
 
-> ⚠️ **코드 vs 옛 런북 차이**: 빌드된 `RuleFieldEditor`의 영어 mode는 현재 `deduction`/`addition` 2종만 제공한다. 4절 스키마의 `ratio`(영어 비율반영)는 **JSONL fill 파이프라인(4~5절)** 에서만 표현되고, 웹 폼에는 아직 노출되지 않는다. 영어 ratio 대학은 폼이 아니라 `core-rule-fills.jsonl`로 처리한다.
+> 참고: `RuleFieldEditor`는 영어 mode `deduction`/`addition`/`ratio`를 모두 제공한다. `ratio`(영어 비율반영)는 등급별 환산점수와 함께 영어 반영비(`weight`)·만점(`scoreMax`)을 채워야 exact가 풀린다. 영어·한국사 등급표는 1~9등급을 모두 채워야 하며, 공식상 무감점/미반영이면 1~9등급을 모두 0으로 명시한다. 우수영역 선택식도 입력할 수 있으며, 가천대처럼 `국/수`와 `영/탐`을 따로 정렬하는 식, 가톨릭대·동덕여대처럼 `국/수`만 우수순으로 고르고 영어·탐구는 고정 반영하는 식은 선택식 템플릿/그룹 JSON으로 표현한다. A/B 유형 중 높은 점수 선택은 대체 산식 JSON으로 표현한다.
+> 선택식 템플릿은 산식 입력을 돕는 장치일 뿐이다. 공식 원문에서 2027 모집단위명/전형 적용 범위가 안전하게 확인되지 않으면 `flag`로 남긴다. 실기·학생부·면접 같은 비수능 요소가 있더라도 수능 반영구조가 공식 원문으로 완전하게 확인되면 `externalComponents`로 구조화해 `edit/verified` 저장할 수 있다. 이 경우 전체 전형총점 exact는 닫히고, 서비스는 낮은 신뢰도 `relative` 상대비교만 제공한다.
 
 ### outcome 저장 흐름
 우측 confidence 컨트롤(제한/낮음/중간/높음 = `1`~`4`)에서 원문과 대조해 신뢰도를 고른다. 선택 즉시 verdict `edit` + `reviewed_confidence` 로 저장된다(항목 이동 없음).
@@ -81,7 +89,7 @@
 
 ## 4. 가중치(rule) 입력 스키마
 
-웹 폼으로 못 푸는 복잡한 환산식(특히 영어 ratio)은 연구용 JSONL fill 파일로 작성한다. 산출 파일은 `packages/reference-data/data/review/core-rule-fills.jsonl` (대학 1개당 1줄). 엔진이 `exact`로 인정하려면 아래가 **모두** 유효해야 한다.
+웹 폼은 주요 rule shape를 바로 저장할 수 있고, 대량/계열별 작업은 연구용 JSONL fill 파일로 작성한다. 산출 파일은 `packages/reference-data/data/review/core-rule-fills.jsonl` (대학 1개당 1줄). 엔진이 `exact`로 인정하려면 아래가 **모두** 유효해야 한다.
 
 ```jsonc
 {
@@ -91,6 +99,13 @@
   "source": "https://…",          // 실제로 본 공식 출처 URL
   "scoreType": "percentile",       // standard | percentile | mixed | custom
   "totalScale": 1000,              // 환산 총점(>0)
+  "csatWeight": 30,                // 선택: 수능+실기/학생부 혼합 전형에서 수능 반영비
+  "calculationMode": "weighted_average", // weighted_average(기본) | weighted_sum(직접 가중합) | normalized_sum(기본점수+실질반영점수)
+  "subjectScoreTypes": {          // 선택: 과목별 점수 기준. mixed에서 반드시 확인
+    "korean": "standardScore",     // standardScore | percentile
+    "math": "standardScore",
+    "inquiry": "percentile"        // 탐구가 변환표가 아니라 백분위 자체면 명시
+  },
 
   // ── 영역 반영비율: 계열별로 다르면 tracks를 나눈다 ──
   "tracks": [
@@ -104,21 +119,73 @@
     }
   ],
 
+  "selectionPolicy": {             // 선택식이면 weights는 0으로 두고 이 정책을 사용한다
+    "mode": "best_n_subjects",
+    "count": 2,
+    "subjects": ["korean", "math", "english", "inquiry"],
+    "requiredSubjects": ["math"],  // 선택: "수학 포함 우수 3영역"처럼 반드시 포함할 영역
+    // 전체 후보를 우수순 정렬하는 식이면 groups 없이 "rankWeights": [40, 30, 20, 10] 사용
+    "groups": [                    // 선택: 후보 묶음을 따로 정렬하는 경우
+      { "count": 1, "subjects": ["korean", "math"], "requiredSubjects": ["math"], "rankWeights": [40] },
+      { "count": 1, "subjects": ["english", "inquiry"], "rankWeights": [30] }
+    ]
+  },
+  "scoreMaxes": {                  // 선택: 공식·시험 기준 표준점수/변환표준점수 최고점이 확정됐을 때
+    "korean": 147,                 // 국어 표준점수 최고점
+    "math": 139,                   // 수학 표준점수 최고점
+    "inquiry": 70.12               // 탐구 변환표준점수 최고점(보통 inquiry.conversionTable.scoreMax로 둔다)
+  },
+  "subjectBaseScores": {           // 선택: normalized_sum에서 영역별 기본점수
+    "korean": 40,
+    "math": 30,
+    "inquiry": 30
+  },
+  "subjectAdjustments": [          // 선택: 수학/탐구 가산. 원문 근거가 있을 때만 입력
+    { "subject": "math", "requiredSelections": ["미적분", "기하"], "multiplier": 1.05 },
+    { "subject": "inquiry", "requiredInquiryCategory": "science", "requiredInquiryCategoryCount": 2, "multiplier": 1.03 }
+  ],
+  "finalAdjustments": [            // 선택: 최종 환산점에 직접 더하는 가산점
+    { "subject": "math", "requiredSelections": ["미적분", "기하"], "pointsFrom": "standardScore", "multiplier": 0.07 },
+    { "subject": "inquiry", "requiredInquiryCategory": "social", "pointsFrom": "percentile", "multiplier": 0.03 }
+  ],
+  "requiredInputs": [              // 선택: 공식 산식에 필요하지만 아직 확정/입력 불가한 값
+    {
+      "kind": "national_max_standard_score",
+      "subjects": ["korean", "math", "inquiry"],
+      "label": "영역별 전국 최고 표준점수",
+      "availability": "post_csat"
+    }
+  ],
+  "formulaAlternatives": [         // 선택: A/B 유형 중 높은 점수 반영
+    { "calculationMode": "weighted_sum", "weights": { "korean": 1.1, "math": 1.3, "inquiry": 0.6 } },
+    { "calculationMode": "weighted_sum", "weights": { "korean": 1.3, "math": 1.1, "inquiry": 0.6 } }
+  ],
+  "externalComponents": [          // 선택: 실기·학생부·면접 등 수능 성적 입력만으로 계산 불가한 구성요소
+    { "kind": "practical", "weight": 70, "label": "실기" },
+    { "kind": "student_record", "weight": 10, "label": "학생부교과" }
+  ],
+
   // ── 아래는 보통 대학 단위로 동일(계열별로 다르면 track 안에 같은 키로 override) ──
   "english": {                     // 영어 반영 방식 3종
     "mode": "deduction",           // deduction(등급별 감점) | addition(등급별 가산점) | ratio(반영비로 합산)
-    "byGrade": { "1": 0, "2": 2, "3": 5, "4": 9, "5": 14 }, // 등급→점수. 일부 등급만 적어도 됨
+    "byGrade": { "1": 0, "2": 2, "3": 5, "4": 9, "5": 14, "6": 20, "7": 30, "8": 40, "9": 50 }, // 등급→점수. 공식표 기준 1~9등급 모두 입력
     // ── mode가 "ratio"일 때만(대부분 대학): 영어가 국수탐처럼 가중 합산됨 ──
     "weight": 20,                  // 영어 반영비(국수탐 weights와 같은 단위)
     "scoreMax": 100               // byGrade 환산점수의 만점(예: 100). 생략 시 100
     // ratio면 byGrade는 등급→'환산점수'(감점 아님). 예: {"1":100,"2":98,"3":94}
   },
   "history": {                     // 한국사
-    "byGrade": { "1": 10, "2": 10, "3": 10, "4": 9.8 }
+    "mode": "addition",            // deduction(등급별 감점, 기본값) | addition(등급별 가산점)
+    "byGrade": { "1": 10, "2": 10, "3": 10, "4": 9.8, "5": 9.6, "6": 9.4, "7": 9.2, "8": 9.0, "9": 8.8 }
   },
   "inquiry": {
     "count": 2,                    // 반영 과목 수: 1 또는 2
-    "mode": "average",             // average(평균) | best_one(상위 1과목)
+    "mode": "average",             // average(평균) | best_one(상위 1과목) | sum(합산)
+    "conversionTable": {            // 선택: 탐구 백분위→대학 자체 변환표준점수표
+      "from": "percentile",
+      "scoreMax": 200,
+      "byPercentile": { "100": 200, "99": 198, "98": 196 }
+    },
     "conversionRisk": false        // 변환표준점수 사용 등 주의 필요 시 true
   },
 
@@ -129,17 +196,38 @@
 ```
 
 ### exact가 풀리는 검증 기준
+- `scoreType` ∈ {standard, percentile, mixed}. `custom`은 원문 보존/후속 엔진 확장 대상이며 현재 exact 저장 대상이 아니다.
 - `totalScale` > 0
+- `csatWeight`는 수능+실기/학생부/면접 혼합 전형에서 수능 구성요소 반영비를 원문 그대로 보존할 때만 쓴다. 이 값만으로 exact가 열리지는 않는다.
 - 각 track의 `weights.korean / math / inquiry` 가 모두 숫자(≥0)
+- `calculationMode`는 생략 시 `weighted_average`다. 서강대처럼 원문이 `국어×1.1 + 수학×1.3 + 탐구합×0.6` 형태의 직접 가중합이면 `weighted_sum`을 명시한다. 충북대처럼 `영역별 기본점수 + 개인 취득점수 ÷ 최고점 × 실질반영점수` 형태면 `normalized_sum`을 명시하고 `subjectBaseScores`와 `scoreMaxes`를 함께 쓴다.
+- `subjectScoreTypes`는 과목별 공식 점수 기준이 전체 `scoreType`과 다를 때 사용한다. 값은 `standardScore` 또는 `percentile`이다.
+- `scoreType:"mixed"`에서 탐구를 쓰는 경우, exact를 열려면 `inquiry.conversionTable` 또는 `subjectScoreTypes.inquiry`를 명시한다. 변환표준점수가 수능 이후 공지 예정이면 `requiredInputs`로 보존해 `edit/verified` 저장할 수 있으나, 이 경우 exact가 아니라 낮은 신뢰도 `relative` 상대비교로만 쓰인다.
 - `english.mode` ∈ {deduction, addition, ratio} — **ratio면 `english.weight`(>0) 필수** (없으면 `mapRule`이 null 반환 → '분석 불가')
-- `inquiry.count` ∈ {1,2}, `inquiry.mode` ∈ {average, best_one}
-- `history.byGrade`, `english.byGrade` 값은 모두 숫자(빈 객체 `{}`도 허용 — 등급표 못 찾으면 비우고 `uncertain`에 적어라, exact 자체는 풀린다)
+- `selectionPolicy` 사용 시 `count` ∈ {1,2,3,4}, `subjects`는 후보 과목, `rankWeights`는 선택된 과목을 성적 내림차순으로 정렬한 뒤 적용하는 순위별 반영비다. `requiredSubjects`를 넣으면 해당 과목을 먼저 포함하고 남은 슬롯만 우수순으로 채운 뒤, 최종 선택 과목 전체를 다시 우수순 정렬해 `rankWeights`를 적용한다. 백분위뿐 아니라 표준점수/혼합 산식도 과목 basis를 100점 기준으로 정규화해 선택한다.
+- `selectionPolicy.groups` 사용 시 각 그룹은 `count` ∈ {1,2,3,4}, `subjects`, `rankWeights`를 모두 가져야 하며, 그룹별 우수순 점수를 합산한다. 그룹 안에서도 `requiredSubjects`를 사용할 수 있다.
+- `scoreMaxes` 사용 시 `korean`/`math`/`inquiry` 값은 모두 양수여야 한다. 숭실대처럼 국어 `(표준점수×반영비)/국어 최고점`, 수학 `(표준점수×반영비)/수학 최고점`으로 계산하는 공식에서 쓴다. 단, 모집요강의 예시 최고점(예: 예시 계산의 147/139)은 실제 2027 시험 최고점이 아니면 verified 저장값으로 쓰지 않는다. 탐구 변환표 최고점은 가능하면 `inquiry.conversionTable.scoreMax`에 넣는다.
+- `subjectBaseScores` 사용 시 `calculationMode:"normalized_sum"`이어야 한다. 값은 0 이상이고, `weights`는 퍼센트가 아니라 실질반영점수다. 예: 국어 기본점수 40, 실질반영점수 90이면 `subjectBaseScores.korean=40`, `weights.korean=90`.
+- `subjectAdjustments` 사용 시 `subject` ∈ {korean, math, inquiry}, `multiplier` 또는 `points` 중 하나 이상이 필요하다. `requiredSelections`, `requiredInquiryCategory`, `requiredInquiryCategoryCount`, `capAtMax`로 적용 조건을 좁힌다.
+- `finalAdjustments` 사용 시 `subject` ∈ {korean, math, inquiry}, `pointsFrom` ∈ {standardScore, percentile}, `multiplier` > 0 이 필요하다. 과목 basis를 바꾸는 `subjectAdjustments`와 달리 최종 환산점에 직접 더한다. 예: 탐구 백분위 83, 88의 각 3% 가산은 `subject:"inquiry"`, `pointsFrom:"percentile"`, `multiplier:0.03`으로 기록한다.
+- `requiredInputs` 사용 시 `kind` ∈ {national_max_standard_score, conversion_table, other}. 전남대처럼 `개인 취득 표준점수 ÷ 영역별 전국 최고 표준점수 × 800` 구조인데 2027 수능 이후 전국 최고 표준점수가 확정되어야 하는 경우 `kind:"national_max_standard_score"`, `availability:"post_csat"`로 원문 구조를 보존한다. 이 값이 있으면 exact는 열리지 않지만, 공개된 반영비·등급표가 완전하면 `edit/verified`로 저장해 백분위 기반 `relative` 상대비교에 쓴다.
+- 수동 검수 UI에서 `requiredInputs`를 입력한 경우에도 totalScale/weights/영어/한국사/탐구 등 공식 구조가 완전하면 `저장(Enter)`이 가능하다. 비수능 구성요소가 있거나 공식 구조가 불완전하면 `플래그(F)`로 남긴다.
+- `formulaAlternatives` 사용 시 각 대체 산식은 `weights`를 가져야 한다. 엔진은 대체 산식들을 각각 계산해 가장 높은 환산점을 사용한다. 대체 산식별로 `calculationMode`, `subjectScoreTypes`, `scoreMaxes`, `subjectBaseScores`, `selectionPolicy`, `subjectAdjustments`, `finalAdjustments`, `requiredInputs`를 override할 수 있다. 단, 대체 산식 중 하나라도 `externalComponents` 또는 `requiredInputs`를 포함하면 일부 산식만 골라 exact 처리하지 않고 전체 환산을 닫는다.
+- `externalComponents` 사용 시 `kind` ∈ {student_record, practical, interview, essay, document, other}, `weight` ≥ 0. `csatWeight`와 함께 쓰면 예: 가천대 연기예술 `csatWeight:30`, `externalComponents:[{kind:"practical",weight:70,label:"실기"}]`처럼 원문 구조를 보존할 수 있다. 이 값이 있으면 현재 사용자 입력이 수능 성적뿐이므로 전체 exact 환산은 열지 않는다. 다만 수능 반영비/영어/한국사/탐구 정책이 완전하면 `edit/verified` 저장이 가능하며, 서비스는 `non_csat_component` approximation을 붙여 낮은 신뢰도 `relative` 상대비교로 처리한다.
+- `inquiry.count` ∈ {1,2}, `inquiry.mode` ∈ {average, best_one, sum}. `sum`은 탐구 2과목 변환표준점수 합을 계수에 직접 곱하는 공식에서 사용한다.
+- `inquiry.conversionTable` 사용 시 `from:"percentile"`, `scoreMax` > 0, `byPercentile` 키는 0~100 백분위 정수여야 한다. 표가 있으면 탐구는 표준점수/백분위가 아니라 공식 변환표준점수표 값으로 계산한다. 사용자의 탐구 백분위가 표에 없으면 exact는 닫힌다.
+- `history.mode`는 생략하면 기존 데이터 호환을 위해 `deduction`으로 해석한다. 한국사 가산점 대학은 반드시 `addition`을 명시한다.
+- 수동 검수 UI에서 `history.byGrade`, `english.byGrade`는 1~9등급이 모두 숫자여야 exact가 풀린다. 등급표를 못 찾으면 verified 저장하지 말고 `flag`/notes로 남긴다. 기존 legacy row의 빈 객체는 호환을 위해 읽을 수 있지만 새 human exact 입력 기준으로는 금지한다.
 
 ### 자주 틀리는 포인트
 - ratio의 `byGrade`는 **감점/가산이 아니라 환산점수 그 자체**(예: 1등급 100, 2등급 95).
 - 영어가 ratio인데 `weight`를 빠뜨리면 그 단위는 분석 불가가 된다.
+- 직접 계수식(`weighted_sum`)에서 `weights`는 퍼센트가 아니라 원문 계수다. 예: `국어×1.1 + 수학×1.3 + 탐구합×0.6`.
+- 기본점수식(`normalized_sum`)에서 `weights`는 실질반영점수다. `weighted_average`처럼 총 반영비로 다시 나누지 않는다.
+- 수학/과탐 가산점은 지원자격(`eligibility`)이 아니라 계산 정책이다. 과목 점수 자체를 5% 키우면 `subjectAdjustments`, 최종 환산점에 표준점수/백분위의 5%를 더하면 `finalAdjustments`에 둔다. 단, 원문에서 “응시 필수”도 있으면 eligibility를 별도로 함께 둔다. “과탐 2과목 응시 시 가산”은 `requiredInquiryCategory:"science"` + `requiredInquiryCategoryCount:2`로 기록한다.
+- 수능30+실기70, 수능90+학생부10처럼 비수능 구성요소가 섞인 전형은 `externalComponents`로 구조화한다. 수능 파트의 공식 반영구조가 완전하면 `edit/verified`로 저장해 `relative` 상대비교를 열 수 있지만, 전체 전형총점 exact는 열리지 않는다. 수능 파트 자체가 불완전하거나 모집단위/전형 매핑이 불명확하면 `flag`로 남긴다.
 - `majorGroup` 7종: `공학 / 자연 / 보건의료 / 인문교육 / 사회경영 / 예체능 / (빈값)`. 반영비율은 보통 계열별로 다르므로 산출 단위는 **대학 × 계열**.
-- 한계(모집군별 상이식, 제2외국어 대체, A/B 상위점수 선택 등)에 걸리면 억지로 끼우지 말고 `verified:false` + `uncertain`으로 남긴다.
+- 한계(제2외국어 대체, 수능 후 공개 변환표준점수, 지원자 집단 최고·최저점 보정 등)에 걸리면 억지로 끼우지 말고 `verified:false` + `uncertain`으로 남긴다.
 
 ---
 
@@ -181,10 +269,10 @@ pnpm --filter @pacer/reference-data typecheck
 
 핵심 동작:
 - `prepare`는 각 대학 track을 `majorGroup`/`unitNames`로 모집단위에 매칭해 `review-decisions.jsonl`을 만들고, `verified:false` fill은 `core-rule-blockers.jsonl`로 분리한다. 감사는 `verified:true` row에 `추정`·`확인 필요`·`패턴 기반`·`미명시`·`미확인` 같은 고위험 문구가 남아 있으면 **실패**한다.
-- exact 계산 가능한 rule만 `verified`로, 변환표준점수 후공개·가산점·상위점수 선택 등 제약이 남은 rule은 `parsed` 저신뢰도로 자동 강등/제한 승격된다(현재 운영 decision 820건: verified 12, parsed 808).
+- exact 계산 가능한 rule은 `verified` + `method:"exact"`로, 변환표준점수 후공개·비수능 구성요소 등 exact를 닫는 제약이 남은 rule은 `verified` + `method:"relative"` 저신뢰도 상대비교로 남긴다. 공식 구조 자체가 불완전하거나 모집단위 매핑이 불확실하면 `flag`로 보류한다.
 - 2027 unit에 직접 입결이 없으면 `PrismaUnitRepository`가 같은 대학+같은 모집단위명의 score-bearing 과거 HistoricalOutcome을 서버 내부 fallback으로 붙인다(스케일 호환 시에만; 운영 row를 새로 만들지 않음).
 
-승격이 끝나면 해당 모집단위 분석이 `method:"exact"`(또는 `parsed`)로 나오는지 확인한다.
+승격이 끝나면 해당 모집단위 분석이 `method:"exact"` 또는 `method:"relative"`로 나오는지 확인한다.
 
 > 웹 도구(3절)는 단건/클러스터 검수를 DB에 바로 쓰고, JSONL 파이프라인(4~5절)은 핵심대 환산식 fill을 일괄 반영한다. 두 경로 모두 동일한 reference decision으로 수렴한다.
 
@@ -194,7 +282,7 @@ pnpm --filter @pacer/reference-data typecheck
 
 - `verified:true` 42건, blocker 8건. 남은 blocker 중 `parsedPromotionAllowed:true`는 0건(전부 자동승격 완전 금지).
 - 영어 ratio 구조화 완료: 강원대·건국대·경북대·광운대·국민대·단국대·동국대·부산대·세종대·숭실대·연세대·이화여대·인하대·한양대·홍익대.
-- 원문 직접 검수로 verified 전환된 대표 대학: 서울대·고려대(본교/세종)·연세대(본교/미래)·경희대·서울시립대·서울과기대·국민대·숭실대·인하대·이화여대·명지대·경상국립대 등(다수는 변환표준점수/가산점 때문에 exact가 아닌 `parsed` 제한 승격).
+- 원문 직접 검수로 verified 전환된 대표 대학: 서울대·고려대(본교/세종)·연세대(본교/미래)·경희대·서울시립대·서울과기대·국민대·숭실대·인하대·이화여대·명지대·경상국립대 등(일부는 변환표준점수/비수능 구성요소 때문에 exact가 아닌 `relative` 상대비교).
 
 ### 남은 8개 blocker
 

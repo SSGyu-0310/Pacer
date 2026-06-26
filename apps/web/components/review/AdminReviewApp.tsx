@@ -11,6 +11,9 @@ import {
   RuleFieldEditor,
   emptyRuleEditorValue,
   ruleEditorValueFromDetail,
+  ruleValueEnablesAnalysis,
+  ruleValueHasExternalComponents,
+  ruleValueHasRequiredInputs,
   ruleValueToCorrectedFields,
   ruleValueUnlocksExact,
   type RuleEditorValue,
@@ -58,6 +61,7 @@ interface LatestDecision {
   reviewer?: string;
   reviewed_at?: string;
   reviewed_confidence?: Confidence | null;
+  corrected_fields?: Record<string, unknown> | null;
 }
 
 interface Detail {
@@ -100,6 +104,7 @@ export function AdminReviewApp() {
 
   const selected = items[selectedIndex] ?? null;
   const liveUnlock = selected?.kind === "rule" ? ruleValueUnlocksExact(ruleValue) : null;
+  const liveAnalysis = selected?.kind === "rule" ? ruleValueEnablesAnalysis(ruleValue) : false;
   const hasProposal = Boolean(detail?.ai_proposal && Object.keys(proposalFields(detail)).length > 0);
 
   useEffect(() => {
@@ -136,7 +141,12 @@ export function AdminReviewApp() {
       const json = (await res.json()) as Detail;
       setDetail(json);
       if (json.kind === "rule") {
-        setRuleValue(ruleEditorValueFromDetail(json.parsed_fields, proposalFields(json)));
+        setRuleValue(
+          ruleEditorValueFromDetail(
+            json.parsed_fields,
+            json.latest_decision?.corrected_fields ?? proposalFields(json),
+          ),
+        );
       }
     } finally {
       setDetailLoading(false);
@@ -190,7 +200,13 @@ export function AdminReviewApp() {
           return;
         }
         const applied = json.cluster_applied ?? 1;
-        setToast(applied > 1 ? `${applied}개 모집단위에 일괄 저장했습니다.` : "저장했습니다.");
+        const suffix =
+          selected.kind === "rule" && json.would_unlock_exact === false
+            ? " exact는 닫고 근사 비교로 반영됩니다."
+            : "";
+        setToast(
+          applied > 1 ? `${applied}개 모집단위에 일괄 저장했습니다.${suffix}` : `저장했습니다.${suffix}`,
+        );
         await loadQueue();
         if (advance) move(1);
       } finally {
@@ -200,22 +216,71 @@ export function AdminReviewApp() {
     [selected, saving, reviewer, loadQueue, move],
   );
 
-  // 규칙: 폼 값을 verified로 저장 (exact가 풀려야 통과).
-  const saveRule = useCallback(() => {
-    if (!selected || selected.kind !== "rule") return;
-    if (!liveUnlock) {
-      setToast("환산총점·가중치를 채워 'exact 풀림 ✓'을 만든 뒤 저장하세요.");
+  const flagCurrent = useCallback(() => {
+    if (!selected) return;
+    const hasExternalComponentInput =
+      ruleValue.externalComponents.length > 0 ||
+      ruleValue.externalComponentsJson.trim() !== "" ||
+      ruleValueHasExternalComponents(ruleValue);
+    const hasRequiredInputInput = ruleValue.requiredInputsJson.trim() !== "" || ruleValueHasRequiredInputs(ruleValue);
+    if (selected.kind !== "rule" || (!hasExternalComponentInput && !hasRequiredInputInput)) {
+      record("flag");
+      return;
+    }
+    if (!ruleValueHasExternalComponents(ruleValue)) {
+      if (hasExternalComponentInput) {
+        setToast("비수능 구성요소 JSON 형식이 올바르지 않습니다.");
+        return;
+      }
+    }
+    if (hasRequiredInputInput && !ruleValueHasRequiredInputs(ruleValue)) {
+      setToast("추가 공식 입력값 JSON 형식이 올바르지 않습니다.");
       return;
     }
     let correctedFields: Record<string, unknown>;
     try {
       correctedFields = ruleValueToCorrectedFields(ruleValue);
     } catch {
-      setToast("지원 자격(JSON) 형식이 올바르지 않습니다.");
+      setToast("비수능 구성요소 JSON 형식이 올바르지 않습니다.");
+      return;
+    }
+    record(
+      "flag",
+      {
+        corrected_fields: correctedFields,
+        review_notes:
+          hasExternalComponentInput && hasRequiredInputInput
+            ? "비수능 구성요소 및 추가 공식 입력값이 있어 현재 수능 성적 입력만으로 전체 exact 환산 불가"
+            : hasRequiredInputInput
+              ? "추가 공식 입력값이 필요하여 현재 수능 성적 입력만으로 exact 환산 불가"
+              : "비수능 구성요소가 포함되어 현재 수능 성적 입력만으로 전체 exact 환산 불가",
+      },
+    );
+  }, [record, ruleValue, selected]);
+
+  // 규칙: 폼 값을 verified로 저장. exact가 닫혀도 requiredInputs/변표근사처럼 비교 가능한 공식 구조는 저장한다.
+  const saveRule = useCallback(() => {
+    if (!selected || selected.kind !== "rule") return;
+    if (!liveAnalysis) {
+      const hasExternalComponentInput =
+        ruleValue.externalComponents.length > 0 ||
+        ruleValue.externalComponentsJson.trim() !== "";
+      if (hasExternalComponentInput && ruleValueHasExternalComponents(ruleValue)) {
+        setToast("비수능 구성요소가 있어도 수능 반영식이 완전하면 근사 비교로 저장할 수 있습니다.");
+        return;
+      }
+      setToast("총점·가중치·영어/한국사 1~9등급을 채워 exact 또는 근사 비교 가능 상태로 만든 뒤 저장하세요.");
+      return;
+    }
+    let correctedFields: Record<string, unknown>;
+    try {
+      correctedFields = ruleValueToCorrectedFields(ruleValue);
+    } catch {
+      setToast("고급 JSON 형식이 올바르지 않습니다.");
       return;
     }
     record("edit", { reviewed_verified_status: "verified", corrected_fields: correctedFields, apply_to_cluster: true });
-  }, [liveUnlock, record, ruleValue, selected]);
+  }, [liveAnalysis, record, ruleValue, selected]);
 
   const confirmProposal = useCallback(() => {
     if (!detail || !selected || selected.kind !== "rule" || !hasProposal) return;
@@ -274,7 +339,7 @@ export function AdminReviewApp() {
       if (key === "k" || event.key === "ArrowUp") return run(event, () => move(-1));
       if (event.key === "Enter") return run(event, selected.kind === "rule" ? saveRule : () => setConfidence("high"));
       if (key === "s") return run(event, () => record("skip"));
-      if (key === "f") return run(event, () => record("flag"));
+      if (key === "f") return run(event, flagCurrent);
       if (key === "a") return run(event, () => void bulkConfirm());
       if (selected.kind === "outcome" && ["1", "2", "3", "4"].includes(event.key)) {
         const values: Confidence[] = ["limited", "low", "medium", "high"];
@@ -284,7 +349,7 @@ export function AdminReviewApp() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [bulkConfirm, move, record, saveRule, setConfidence, selected]);
+  }, [bulkConfirm, flagCurrent, move, record, saveRule, setConfidence, selected]);
 
   const header = useMemo(
     () => [detail?.university_name, detail?.unit_name, detail?.year].filter(Boolean).join(" · "),
@@ -379,7 +444,9 @@ export function AdminReviewApp() {
                   <div className="mt-2 flex items-center gap-1 text-[11px] text-slate-500">
                     {item.has_ai_proposal ? <span className="rounded bg-cyan-100 px-1.5 py-0.5 text-cyan-800">AI</span> : null}
                     {item.latest_verdict ? (
-                      <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800">검수완료</span>
+                      <span className={`rounded px-1.5 py-0.5 ${verdictClass(item.latest_verdict)}`}>
+                        {verdictLabel(item.latest_verdict)}
+                      </span>
                     ) : (
                       <span className="rounded bg-slate-100 px-1.5 py-0.5">대기</span>
                     )}
@@ -415,7 +482,7 @@ export function AdminReviewApp() {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button
-                onClick={() => record("flag")}
+                onClick={flagCurrent}
                 disabled={!selected || saving || !reviewer}
                 className="rounded border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 disabled:opacity-40"
               >
@@ -440,8 +507,14 @@ export function AdminReviewApp() {
               {selected?.kind === "rule" ? (
                 <button
                   onClick={saveRule}
-                  disabled={saving || !liveUnlock || !reviewer}
-                  title={!reviewer ? "검수자를 먼저 선택하세요" : liveUnlock ? "" : "환산총점·가중치를 채우면 저장할 수 있습니다"}
+                  disabled={saving || !liveAnalysis || !reviewer}
+                  title={
+                    !reviewer
+                      ? "검수자를 먼저 선택하세요"
+                      : liveAnalysis
+                        ? ""
+                        : "총점·반영비·등급표를 채우거나 비수능/추가 입력값은 플래그로 저장하세요"
+                  }
                   className="rounded bg-cyan-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
                 >
                   {saving ? "저장 중…" : "저장 (Enter)"}
@@ -517,6 +590,26 @@ function reviewerClass(value: string | null | undefined): string {
   if (value === "shin") return "bg-sky-100 text-sky-800";
   if (value === "kwon") return "bg-violet-100 text-violet-800";
   return "bg-slate-100 text-slate-600";
+}
+
+function verdictLabel(value: Verdict): string {
+  return {
+    confirm: "확정",
+    edit: "검수완료",
+    reject: "제외",
+    flag: "검토보류",
+    skip: "스킵",
+  }[value];
+}
+
+function verdictClass(value: Verdict): string {
+  return {
+    confirm: "bg-emerald-100 text-emerald-800",
+    edit: "bg-emerald-100 text-emerald-800",
+    reject: "bg-rose-100 text-rose-800",
+    flag: "bg-amber-100 text-amber-800",
+    skip: "bg-slate-100 text-slate-600",
+  }[value];
 }
 
 function tierLabel(value: CoreTier): string {

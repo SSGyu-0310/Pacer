@@ -152,16 +152,77 @@ async function loadLocalCoreDecisionIds(filePath: string) {
 function validFormula(value: Prisma.JsonValue | null): boolean {
   if (!isRecord(value)) return false;
   const totalScale = value.totalScale;
+  const calculationMode = value.calculationMode;
+  const csatWeight = value.csatWeight;
   const weights = value.weights;
+  const subjectScoreTypes = value.subjectScoreTypes;
   const selectionPolicy = value.selectionPolicy;
+  const scoreMaxes = value.scoreMaxes;
+  const subjectBaseScores = value.subjectBaseScores;
+  const subjectAdjustments = value.subjectAdjustments;
+  const finalAdjustments = value.finalAdjustments;
+  const alternatives = value.alternatives;
+  const externalComponents = value.externalComponents;
   return (
     typeof totalScale === "number" &&
     totalScale > 0 &&
+    validCalculationMode(calculationMode) &&
+    validOptionalNonNegativeNumber(csatWeight) &&
     isRecord(weights) &&
     nonNegativeNumber(weights.korean) &&
     nonNegativeNumber(weights.math) &&
     nonNegativeNumber(weights.inquiry) &&
-    validSelectionPolicy(selectionPolicy)
+    validSubjectScoreTypes(subjectScoreTypes) &&
+    validScoreMaxes(scoreMaxes) &&
+    validSubjectBaseScores(subjectBaseScores) &&
+    validSelectionPolicy(selectionPolicy) &&
+    validSubjectAdjustments(subjectAdjustments) &&
+    validFinalAdjustments(finalAdjustments) &&
+    validFormulaAlternatives(alternatives) &&
+    validExternalComponents(externalComponents)
+  );
+}
+
+function validSubjectScoreTypes(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  const entries = Object.entries(value);
+  if (entries.length === 0) return false;
+  return entries.every(
+    ([key, metric]) =>
+      ["korean", "math", "inquiry"].includes(key) &&
+      (metric === "standardScore" || metric === "percentile"),
+  );
+}
+
+function validScoreMaxes(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  const entries = Object.entries(value);
+  if (entries.length === 0) return false;
+  return entries.every(
+    ([key, scoreMax]) =>
+      ["korean", "math", "inquiry"].includes(key) && positiveNumber(scoreMax),
+  );
+}
+
+function validSubjectBaseScores(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  const entries = Object.entries(value);
+  if (entries.length === 0) return false;
+  return entries.every(
+    ([key, score]) =>
+      ["korean", "math", "inquiry"].includes(key) && nonNegativeNumber(score),
+  );
+}
+
+function validCalculationMode(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === "weighted_average" ||
+    value === "weighted_sum" ||
+    value === "normalized_sum"
   );
 }
 
@@ -169,15 +230,185 @@ function validSelectionPolicy(value: unknown): boolean {
   if (value === undefined) return true;
   if (!isRecord(value)) return false;
   if (value.mode !== "best_n_subjects") return false;
-  if (value.count !== 2 && value.count !== 3) return false;
+  if (![1, 2, 3, 4].includes(Number(value.count))) return false;
   if (!Array.isArray(value.subjects)) return false;
+  const subjects = value.subjects;
+  if (
+    value.rankWeights !== undefined &&
+    (!Array.isArray(value.rankWeights) ||
+      value.rankWeights.length !== value.count ||
+      !value.rankWeights.every((weight) => positiveNumber(weight)))
+  ) {
+    return false;
+  }
+  if (
+    value.requiredSubjects !== undefined &&
+    (!Array.isArray(value.requiredSubjects) ||
+      value.requiredSubjects.length > Number(value.count) ||
+      !value.requiredSubjects.every((subject) => subjects.includes(subject)))
+  ) {
+    return false;
+  }
+  if (value.groups !== undefined) {
+    if (!Array.isArray(value.groups) || value.groups.length === 0 || value.groups.length > 4) return false;
+    if (!value.groups.every(validSelectionGroup)) return false;
+  }
   return (
-    value.subjects.length >= 2 &&
-    value.subjects.length <= 4 &&
-    value.subjects.every((subject) =>
+    subjects.length >= Number(value.count) &&
+    subjects.length <= 4 &&
+    subjects.every((subject) =>
       ["korean", "math", "english", "inquiry"].includes(String(subject)),
     )
   );
+}
+
+function validSelectionGroup(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (![1, 2, 3, 4].includes(Number(value.count))) return false;
+  if (!Array.isArray(value.subjects)) return false;
+  const subjects = value.subjects;
+  if (
+    subjects.length < Number(value.count) ||
+    subjects.length > 4 ||
+    !subjects.every((subject) =>
+      ["korean", "math", "english", "inquiry"].includes(String(subject)),
+    )
+  ) {
+    return false;
+  }
+  if (
+    value.requiredSubjects !== undefined &&
+    (!Array.isArray(value.requiredSubjects) ||
+      value.requiredSubjects.length > Number(value.count) ||
+      !value.requiredSubjects.every((subject) => subjects.includes(subject)))
+  ) {
+    return false;
+  }
+  return (
+    Array.isArray(value.rankWeights) &&
+    value.rankWeights.length === Number(value.count) &&
+    value.rankWeights.every((weight) => positiveNumber(weight))
+  );
+}
+
+function validSubjectAdjustments(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return false;
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    if (!["korean", "math", "inquiry"].includes(String(item.subject))) return false;
+    if (item.multiplier === undefined && item.points === undefined) return false;
+    if (item.multiplier !== undefined && !positiveNumber(item.multiplier)) return false;
+    if (item.points !== undefined && typeof item.points !== "number") return false;
+    if (
+      item.requiredInquiryCategory !== undefined &&
+      item.requiredInquiryCategory !== "science" &&
+      item.requiredInquiryCategory !== "social"
+    ) {
+      return false;
+    }
+    if (
+      item.requiredInquiryCategoryCount !== undefined &&
+      item.requiredInquiryCategoryCount !== 1 &&
+      item.requiredInquiryCategoryCount !== 2
+    ) {
+      return false;
+    }
+    if (item.requiredInquiryCategoryCount !== undefined && item.requiredInquiryCategory === undefined) {
+      return false;
+    }
+    if (
+      item.requiredSelections !== undefined &&
+      (!Array.isArray(item.requiredSelections) ||
+        !item.requiredSelections.every((selection) => typeof selection === "string" && selection.trim() !== ""))
+    ) {
+      return false;
+    }
+    return item.capAtMax === undefined || typeof item.capAtMax === "boolean";
+  });
+}
+
+function validFinalAdjustments(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return false;
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    if (!["korean", "math", "inquiry"].includes(String(item.subject))) return false;
+    if (item.pointsFrom !== "standardScore" && item.pointsFrom !== "percentile") return false;
+    if (!positiveNumber(item.multiplier)) return false;
+    if (item.maxPoints !== undefined && !positiveNumber(item.maxPoints)) return false;
+    if (
+      item.requiredInquiryCategory !== undefined &&
+      item.requiredInquiryCategory !== "science" &&
+      item.requiredInquiryCategory !== "social"
+    ) {
+      return false;
+    }
+    if (
+      item.requiredInquiryCategoryCount !== undefined &&
+      item.requiredInquiryCategoryCount !== 1 &&
+      item.requiredInquiryCategoryCount !== 2
+    ) {
+      return false;
+    }
+    if (item.requiredInquiryCategoryCount !== undefined && item.requiredInquiryCategory === undefined) {
+      return false;
+    }
+    if (
+      item.requiredSelections !== undefined &&
+      (!Array.isArray(item.requiredSelections) ||
+        !item.requiredSelections.every((selection) => typeof selection === "string" && selection.trim() !== ""))
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function validFormulaAlternatives(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return false;
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    if (!validCalculationMode(item.calculationMode)) return false;
+    if (item.totalScale !== undefined && !positiveNumber(item.totalScale)) return false;
+    if (!validOptionalNonNegativeNumber(item.csatWeight)) return false;
+    if (!isRecord(item.weights)) return false;
+    if (
+      !nonNegativeNumber(item.weights.korean) ||
+      !nonNegativeNumber(item.weights.math) ||
+      !nonNegativeNumber(item.weights.inquiry)
+    ) {
+      return false;
+    }
+    return (
+      validSubjectScoreTypes(item.subjectScoreTypes) &&
+      validScoreMaxes(item.scoreMaxes) &&
+      validSubjectBaseScores(item.subjectBaseScores) &&
+      validSelectionPolicy(item.selectionPolicy) &&
+      validSubjectAdjustments(item.subjectAdjustments) &&
+      validFinalAdjustments(item.finalAdjustments) &&
+      validExternalComponents(item.externalComponents)
+    );
+  });
+}
+
+function validExternalComponents(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return false;
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    if (!["student_record", "practical", "interview", "essay", "document", "other"].includes(String(item.kind))) {
+      return false;
+    }
+    if (!nonNegativeNumber(item.weight)) return false;
+    if (item.label !== undefined && (typeof item.label !== "string" || item.label.trim() === "")) return false;
+    return item.required === undefined || typeof item.required === "boolean";
+  });
+}
+
+function validOptionalNonNegativeNumber(value: unknown): boolean {
+  return value === undefined || nonNegativeNumber(value);
 }
 
 function ratioMissingWeight(value: Prisma.JsonValue | null): boolean {
@@ -187,7 +418,30 @@ function ratioMissingWeight(value: Prisma.JsonValue | null): boolean {
 
 function validInquiry(value: Prisma.JsonValue | null): boolean {
   if (!isRecord(value)) return false;
-  return (value.count === 1 || value.count === 2) && (value.mode === "average" || value.mode === "best_one");
+  return (
+    (value.count === 1 || value.count === 2) &&
+    (value.mode === "average" || value.mode === "best_one" || value.mode === "sum") &&
+    validInquiryConversionTable(value.conversionTable)
+  );
+}
+
+function validInquiryConversionTable(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value) || value.from !== "percentile") return false;
+  if (value.scoreMax !== undefined && !positiveNumber(value.scoreMax)) return false;
+  if (!isRecord(value.byPercentile)) return false;
+  const entries = Object.entries(value.byPercentile);
+  if (entries.length === 0 || entries.length > 101) return false;
+  return entries.every(([key, score]) => {
+    const percentile = Number(key);
+    return (
+      Number.isInteger(percentile) &&
+      percentile >= 0 &&
+      percentile <= 100 &&
+      typeof score === "number" &&
+      Number.isFinite(score)
+    );
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -69,7 +69,11 @@ def main() -> None:
 
         text_path = text_path_for(text_root, sha256, index)
         text_path.parent.mkdir(parents=True, exist_ok=True)
-        extraction_result = extract_hwp_text(raw_hwp_path, text_path, repo_root)
+        extraction_result = attach_document_year_evidence(
+            extract_hwp_text(raw_hwp_path, text_path, repo_root),
+            text_path,
+            args.year,
+        )
         extraction_cache[sha256] = extraction_result
         source_row.update(extraction_result)
         source_rows.append(source_row)
@@ -462,6 +466,81 @@ def detect_document_role(text: str) -> str:
     return "unknown"
 
 
+def attach_document_year_evidence(
+    result: dict[str, Any],
+    text_path: Path,
+    target_year: int,
+) -> dict[str, Any]:
+    if result.get("extractionStatus") not in {"extracted", "html_like_artifact", "low_text"}:
+        return result
+    try:
+        text = text_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return result
+
+    title_years = title_admission_years(text)
+    detected_years = detected_admission_years(text)
+    primary_year = title_years[0] if title_years else (detected_years[0] if detected_years else None)
+    if primary_year == target_year:
+        status = "primary_year_matched"
+        safe = True
+    elif primary_year is not None:
+        status = "primary_year_mismatch"
+        safe = False
+    elif target_year in detected_years:
+        status = "target_year_mentioned_without_primary"
+        safe = False
+    elif detected_years:
+        status = "target_year_not_detected"
+        safe = False
+    else:
+        status = "year_not_detected"
+        safe = False
+
+    result.update(
+        {
+            "documentDetectedAdmissionYears": detected_years,
+            "documentTitleAdmissionYears": title_years,
+            "documentPrimaryAdmissionYear": primary_year,
+            "documentYearStatus": status,
+            "promotionSafeSourceYear": safe,
+        }
+    )
+    if not safe:
+        notes = str(result.get("notes") or "")
+        year_note = (
+            f"Document primary admission year is {primary_year or 'unknown'}; "
+            f"target year is {target_year}. Treat this HWP as unsafe for promotion "
+            "until visually verified against the official target-year source."
+        )
+        result["notes"] = f"{notes} {year_note}".strip()
+    return result
+
+
+def detected_admission_years(text: str) -> list[int]:
+    years: list[int] = []
+    for match in re.findall(r"(20[1-3][0-9])\s*학년도", text[:40000]):
+        year = int(match)
+        if 2021 <= year <= 2035 and year not in years:
+            years.append(year)
+    return years
+
+
+def title_admission_years(text: str) -> list[int]:
+    heading = re.sub(r"\s+", " ", text[:12000])
+    patterns = [
+        r"(20[1-3][0-9])\s*학년도\s*.{0,80}?(?:정시|수시|모집요강|전형계획|대학입학전형|신입생|입학전형)",
+        r"(?:정시|수시|모집요강|전형계획|대학입학전형|신입생|입학전형).{0,80}?(20[1-3][0-9])\s*학년도",
+    ]
+    years: list[int] = []
+    for pattern in patterns:
+        for match in re.findall(pattern, heading):
+            year = int(match)
+            if 2021 <= year <= 2035 and year not in years:
+                years.append(year)
+    return years
+
+
 def text_path_for(text_root: Path, sha256: str, sequence: int) -> Path:
     if sha256:
         return text_root / sha256[:2] / f"{sha256[:16]}.txt"
@@ -503,6 +582,9 @@ def write_attention_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "sourceLinkRole",
         "attachmentRole",
         "detectedDocumentRole",
+        "documentYearStatus",
+        "documentPrimaryAdmissionYear",
+        "promotionSafeSourceYear",
         "extractionStatus",
         "distributionNoticeOnly",
         "textChars",
@@ -532,7 +614,9 @@ def attention_rows(source_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         row
         for row in source_rows
-        if row.get("extractionStatus") in statuses or row.get("distributionNoticeOnly")
+        if row.get("extractionStatus") in statuses
+        or row.get("distributionNoticeOnly")
+        or row.get("promotionSafeSourceYear") is False
     ]
 
 
@@ -592,9 +676,17 @@ def summarize(year: int, source_rows: list[dict[str, Any]]) -> dict[str, Any]:
         "byContainerKind": count_by(source_rows, "hwpContainerKind"),
         "bySourceLinkRole": count_by(source_rows, "sourceLinkRole"),
         "byDetectedDocumentRole": count_by(source_rows, "detectedDocumentRole"),
+        "byDocumentYearStatus": count_by(source_rows, "documentYearStatus"),
+        "promotionSafeSourceYearRows": sum(
+            1 for row in source_rows if row.get("promotionSafeSourceYear") is True
+        ),
+        "promotionUnsafeSourceYearRows": sum(
+            1 for row in source_rows if row.get("promotionSafeSourceYear") is False
+        ),
         "notes": [
             "HWP5 text is extracted from BodyText/ViewText paragraph text records.",
             "CJK/private-use control noise from HWP binary controls is removed from the text candidate.",
+            "promotionSafeSourceYear=true requires the document primary admission year to match the extraction target year.",
             "distributionNoticeOnly=true usually means the source is a protected/distribution HWP requiring a dedicated viewer or OCR path.",
             "Extracted text is a source-preserving candidate and requires human verification before promotion to AdmissionRule or HistoricalOutcome.",
         ],

@@ -63,7 +63,7 @@ function unit(unitId: string, group: "ga" | "na" | "da" = "ga") {
   };
 }
 
-/** 5개 후보: 정상 / 규칙없음 / 자격미달 / 입결없음 / 근사(저신뢰) */
+/** 6개 후보: 정상 / 규칙없음 / 자격미달 / 입결없음 / 미검수 근사 / exact-blocked 근사 */
 function candidates(): AnalysisCandidate[] {
   return [
     {
@@ -101,6 +101,23 @@ function candidates(): AnalysisCandidate[] {
       unit: unit("u-approx", "da"),
       rule: standardRule({ unitId: "u-approx", verifiedStatus: "parsed" }),
       historical: historicalRef({ unitId: "u-approx" }),
+      quota: 60,
+      prevQuota: 60,
+    },
+    {
+      unit: unit("u-required-input-approx", "da"),
+      rule: standardRule({
+        unitId: "u-required-input-approx",
+        requiredInputs: [
+          {
+            kind: "national_max_standard_score",
+            subjects: ["korean", "math", "inquiry"],
+            label: "영역별 전국 최고 표준점수",
+            availability: "post_csat",
+          },
+        ],
+      }),
+      historical: historicalRef({ unitId: "u-required-input-approx" }),
       quota: 60,
       prevQuota: 60,
     },
@@ -190,17 +207,18 @@ describe("AnalysisService.run (§17.3)", () => {
 
     expect(r.snapshotId).toBe("snap-1");
     expect(r.summary).toEqual({
-      candidates: 5,
-      analyzed: 2,
+      candidates: 6,
+      analyzed: 3,
       ineligible: 1,
       unsupported: 1,
       insufficientData: 1,
     });
     const total = Object.values(r.bandDistribution).reduce((a, b) => a + b, 0);
-    expect(total).toBe(2);
+    expect(total).toBe(3);
     expect(repo.saved!.results.map((x) => x.unit.unitId)).toEqual([
       "u-ok",
       "u-approx",
+      "u-required-input-approx",
     ]);
   });
 
@@ -224,6 +242,17 @@ describe("AnalysisService.run (§17.3)", () => {
     expect(ap.confidence).toBe("low");
     expect(ap.warnings).toContain("low_data_confidence");
     expect(ap.band).toBe("match"); // 1.9 − 0.3(6모) − 0.3(저신뢰) = 1.3 < 1.5
+  });
+
+  it("수능 이후 확정 입력값이 남은 검수 rule도 상대비교 분석에 포함한다", async () => {
+    const { service, repo } = makeService();
+    await service.run("cy-1", "es-1", "june_position");
+    const ap = repo.saved!.results.find((x) => x.unit.unitId === "u-required-input-approx")!;
+    expect(ap.convertedScore).toBe(93.9);
+    expect(ap.historicalReferenceScore).toBe(92);
+    expect(ap.scoreGap).toBe(1.9);
+    expect(ap.confidence).toBe("low");
+    expect(ap.warnings).toContain("low_data_confidence");
   });
 
   it("목표가 있으면 후보 로드 필터에 반영된다", async () => {
@@ -290,7 +319,7 @@ describe("AnalysisService.getResults (§10.5)", () => {
     const { service } = makeService();
     await service.run("cy-1", "es-1", "june_position");
     const results = await service.getResults("snap-1");
-    expect(results).toHaveLength(2);
+    expect(results).toHaveLength(3);
   });
 
   it("없는 스냅샷 → NotFoundError", async () => {
