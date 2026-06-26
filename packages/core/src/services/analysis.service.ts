@@ -98,15 +98,23 @@ export class AnalysisService {
     const target = await this.targets.findLatest(cycleId, examScore.examType);
 
     // 5. 후보 모집단위 로드
+    const targetUniversityIds = target?.targetUniversityIds.length
+      ? target.targetUniversityIds
+      : undefined;
+    const targetUnitIds = target?.targetUnitIds.length
+      ? target.targetUnitIds
+      : undefined;
     const candidates = await this.units.loadCandidates({
       admissionYear: cycle.admissionYear,
       track: cycle.track,
       preferredRegions: target?.preferredRegions.length
         ? target.preferredRegions
         : undefined,
-      targetUniversities: target?.targetUniversities.length
+      targetUniversities: !targetUniversityIds && target?.targetUniversities.length
         ? target.targetUniversities
         : undefined,
+      targetUniversityIds,
+      targetUnitIds,
     });
 
     // 6–11. 모집단위별 분석 (순수 엔진 함수만 — 결정적)

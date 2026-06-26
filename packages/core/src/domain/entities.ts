@@ -58,7 +58,9 @@ export interface TargetSnapshot {
   cycleId: string;
   examType: ExamType;
   targetUniversities: string[];
+  targetUniversityIds: string[];
   targetMajorGroups: string[];
+  targetUnitIds: string[];
   preferredRegions: string[];
   riskProfile: RiskProfile;
   susiJungsiPreference: SusiJungsiPreference;

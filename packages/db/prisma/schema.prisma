@@ -254,7 +254,9 @@ model TargetSnapshot {
   cycleId              String
   examType             ExamType
   targetUniversities   String[]
+  targetUniversityIds  String[]             @default([])
   targetMajorGroups    String[]
+  targetUnitIds        String[]             @default([])
   preferredRegions     String[]
   riskProfile          RiskProfile
   susiJungsiPreference SusiJungsiPreference

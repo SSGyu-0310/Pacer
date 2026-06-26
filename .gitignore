@@ -48,6 +48,7 @@ packages/reference-data/data/public/kcue/
 packages/reference-data/data/public/kice/
 packages/reference-data/data/public/university-admission-sites/
 packages/reference-data/data/sources/foundation_manual_*_evidence.jsonl
+packages/reference-data/tmp-goal-*
 
 # v0 design reference (not part of the app)
 analysis-results-screen/

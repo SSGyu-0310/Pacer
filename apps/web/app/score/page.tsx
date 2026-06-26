@@ -1,9 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { ReferenceUnitItem, ReferenceUniversityItem } from "@pacer/shared";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { track } from "@/lib/analytics";
@@ -24,6 +25,7 @@ const INQUIRY_SELECTIONS = [
   "윤리와사상",
   "한국지리",
 ] as const;
+const UNIVERSITY_INITIAL_GROUPS = ["ㄱ", "ㄴ-ㅂ", "ㅅ", "ㅇ-ㅈ", "ㅊ-ㅎ"] as const;
 
 const optionalScore = (max: number) =>
   z.preprocess(
@@ -47,9 +49,6 @@ const formSchema = z.object({
   track: z.enum(["humanities", "natural", "medical", "undecided"]),
   risk_profile: z.enum(["conservative", "balanced", "aggressive"]),
   susi_jungsi_preference: z.enum(["susi", "jungsi", "undecided"]),
-  target_universities: z.string().min(1, "목표 대학을 1곳 이상 입력해 주세요"),
-  target_major_groups: z.string(),
-  preferred_regions: z.string(),
   korean_raw: optionalScore(100),
   korean_standard: requiredScore(200, "표준점수"),
   korean_percentile: requiredScore(100, "백분위"),
@@ -85,9 +84,6 @@ const defaults: FormValues = {
   track: "natural",
   risk_profile: "balanced",
   susi_jungsi_preference: "jungsi",
-  target_universities: "연세대, 중앙대, 한양대",
-  target_major_groups: "공학, 경영",
-  preferred_regions: "서울",
   korean_raw: undefined,
   korean_standard: 131,
   korean_percentile: 93,
@@ -114,6 +110,25 @@ export default function ScorePage() {
   const [mode, setMode] = useState<ScoreMode>("official");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [universityQuery, setUniversityQuery] = useState("");
+  const [universityInitialGroup, setUniversityInitialGroup] =
+    useState<(typeof UNIVERSITY_INITIAL_GROUPS)[number]>("ㄱ");
+  const [browseUniversityOptions, setBrowseUniversityOptions] = useState<
+    ReferenceUniversityItem[]
+  >([]);
+  const [browseUniversityLoading, setBrowseUniversityLoading] = useState(false);
+  const [searchUniversityOptions, setSearchUniversityOptions] = useState<
+    ReferenceUniversityItem[]
+  >([]);
+  const [searchUniversityLoading, setSearchUniversityLoading] = useState(false);
+  const [selectedUniversities, setSelectedUniversities] = useState<
+    ReferenceUniversityItem[]
+  >([]);
+  const [activeUniversityId, setActiveUniversityId] = useState<string | null>(null);
+  const [unitQuery, setUnitQuery] = useState("");
+  const [unitOptions, setUnitOptions] = useState<ReferenceUnitItem[]>([]);
+  const [unitLoading, setUnitLoading] = useState(false);
+  const [selectedUnits, setSelectedUnits] = useState<ReferenceUnitItem[]>([]);
   const {
     register,
     handleSubmit,
@@ -125,6 +140,102 @@ export default function ScorePage() {
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
   });
+  const activeUniversity =
+    selectedUniversities.find((university) => university.id === activeUniversityId) ??
+    selectedUniversities[0] ??
+    null;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setBrowseUniversityLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          initial_group: universityInitialGroup,
+          limit: "24",
+        });
+        const data = await fetchJson<{ universities: ReferenceUniversityItem[] }>(
+          `/api/reference/universities?${qs.toString()}`,
+          controller.signal,
+        );
+        setBrowseUniversityOptions(data.universities);
+      } catch (e) {
+        if (!isAbortError(e)) setBrowseUniversityOptions([]);
+      } finally {
+        if (!controller.signal.aborted) setBrowseUniversityLoading(false);
+      }
+    }, 180);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [universityInitialGroup]);
+
+  useEffect(() => {
+    const q = universityQuery.trim();
+    if (!q) {
+      setSearchUniversityOptions([]);
+      setSearchUniversityLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setSearchUniversityLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          q,
+          limit: "12",
+        });
+        const data = await fetchJson<{ universities: ReferenceUniversityItem[] }>(
+          `/api/reference/universities?${qs.toString()}`,
+          controller.signal,
+        );
+        setSearchUniversityOptions(data.universities);
+      } catch (e) {
+        if (!isAbortError(e)) setSearchUniversityOptions([]);
+      } finally {
+        if (!controller.signal.aborted) setSearchUniversityLoading(false);
+      }
+    }, 180);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [universityQuery]);
+
+  useEffect(() => {
+    if (!activeUniversity) {
+      setUnitOptions([]);
+      setUnitLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setUnitLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          university_id: activeUniversity.id,
+          q: unitQuery,
+          limit: "16",
+        });
+        const data = await fetchJson<{ units: ReferenceUnitItem[] }>(
+          `/api/reference/units?${qs.toString()}`,
+          controller.signal,
+        );
+        setUnitOptions(data.units);
+      } catch (e) {
+        if (!isAbortError(e)) setUnitOptions([]);
+      } finally {
+        if (!controller.signal.aborted) setUnitLoading(false);
+      }
+    }, 180);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [activeUniversity, unitQuery]);
 
   /* ── 자동 진행: 칩 선택/입력 완료 시 다음 입력으로 ── */
   function advance(target: string) {
@@ -157,6 +268,45 @@ export default function ScorePage() {
       }
     };
     return { ...reg, onKeyDown };
+  }
+
+  function selectUniversity(university: ReferenceUniversityItem) {
+    const relatedIds = new Set(university.related_ids);
+    if (
+      !selectedUniversities.some(
+        (item) => item.id === university.id || item.related_ids.some((id) => relatedIds.has(id)),
+      )
+    ) {
+      setSelectedUniversities([...selectedUniversities, university]);
+    }
+    setActiveUniversityId(university.id);
+    setUniversityQuery("");
+  }
+
+  function removeUniversity(id: string) {
+    const target = selectedUniversities.find((university) => university.id === id);
+    const relatedIds = new Set(target?.related_ids ?? [id]);
+    const nextUniversities = selectedUniversities.filter(
+      (university) => !university.related_ids.some((relatedId) => relatedIds.has(relatedId)),
+    );
+    setSelectedUniversities(nextUniversities);
+    setSelectedUnits(
+      selectedUnits.filter((unit) => !relatedIds.has(unit.university_id)),
+    );
+    if (activeUniversityId !== null && relatedIds.has(activeUniversityId)) {
+      setActiveUniversityId(nextUniversities[0]?.id ?? null);
+    }
+  }
+
+  function selectUnit(unit: ReferenceUnitItem) {
+    if (!selectedUnits.some((item) => item.id === unit.id)) {
+      setSelectedUnits([...selectedUnits, unit]);
+    }
+    setUnitQuery("");
+  }
+
+  function removeUnit(id: string) {
+    setSelectedUnits(selectedUnits.filter((unit) => unit.id !== id));
   }
 
   async function onSubmit(values: FormValues) {
@@ -216,11 +366,21 @@ export default function ScorePage() {
       track("score_submit", { exam_type: "june_mock" });
 
       setStatus("목표 저장 중");
+      const targetUniversityIds = uniqueStrings(
+        selectedUniversities.flatMap((university) => university.related_ids),
+      );
+      const targetUnitIds = selectedUnits.map((unit) => unit.id);
       await postJson(`/api/cycles/${cycle.cycle_id}/targets`, {
         exam_type: "june_mock",
-        target_universities: splitList(values.target_universities),
-        target_major_groups: splitList(values.target_major_groups),
-        preferred_regions: splitList(values.preferred_regions),
+        target_universities: selectedUniversities.map((university) => university.name),
+        target_university_ids: targetUniversityIds,
+        target_major_groups: uniqueStrings(
+          selectedUnits
+            .map((unit) => unit.major_group)
+            .filter((majorGroup): majorGroup is string => Boolean(majorGroup)),
+        ),
+        target_unit_ids: targetUnitIds,
+        preferred_regions: [],
         risk_profile: values.risk_profile,
         susi_jungsi_preference: values.susi_jungsi_preference,
       });
@@ -530,25 +690,165 @@ export default function ScorePage() {
 
         {/* 3. 목표 (선택) */}
         <Card id="card-goal" step="3" title="목표" hint="선택 — 비워도 분석할 수 있어요">
-          <Field
-            as="label"
-            label="목표 대학 (쉼표로 구분)"
-            error={errors.target_universities?.message}
-          >
+          <Field as="label" label="대학 검색">
             <input
-              {...register("target_universities")}
-              placeholder="연세대, 중앙대"
+              value={universityQuery}
+              onChange={(e) => setUniversityQuery(e.target.value)}
+              placeholder="가천대, 연세대"
               className={inputClass}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field as="label" label="전공 그룹">
-              <input {...register("target_major_groups")} className={inputClass} />
-            </Field>
-            <Field as="label" label="선호 지역">
-              <input {...register("preferred_regions")} className={inputClass} />
-            </Field>
+
+          {universityQuery.trim() ? (
+            <OptionList
+              loading={searchUniversityLoading}
+              empty={searchUniversityOptions.length === 0}
+            >
+              {searchUniversityOptions.map((university) => (
+                <UniversityOptionButton
+                  key={university.id}
+                  university={university}
+                  selected={selectedUniversities.some(
+                    (item) => item.id === university.id,
+                  )}
+                  onSelect={() => selectUniversity(university)}
+                />
+              ))}
+            </OptionList>
+          ) : null}
+
+          <div className="grid grid-cols-5 gap-1">
+            {UNIVERSITY_INITIAL_GROUPS.map((group) => {
+              const selected = universityInitialGroup === group;
+              return (
+                <button
+                  key={group}
+                  type="button"
+                  onClick={() => setUniversityInitialGroup(group)}
+                  className={`h-9 rounded-lg border text-xs font-semibold transition ${
+                    selected
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  {group}
+                </button>
+              );
+            })}
           </div>
+          <OptionList
+            loading={browseUniversityLoading}
+            empty={browseUniversityOptions.length === 0}
+          >
+            {browseUniversityOptions.map((university) => (
+              <UniversityOptionButton
+                key={university.id}
+                university={university}
+                selected={selectedUniversities.some(
+                  (item) => item.id === university.id,
+                )}
+                onSelect={() => selectUniversity(university)}
+              />
+            ))}
+          </OptionList>
+
+          <TargetChipList
+            label="선택한 대학"
+            emptyLabel="대학 미선택"
+            items={selectedUniversities.map((university) => ({
+              id: university.id,
+              label: university.display_name,
+              active: activeUniversity?.id === university.id,
+              meta: university.core_tier ?? undefined,
+              onActivate: () => setActiveUniversityId(university.id),
+              onRemove: () => removeUniversity(university.id),
+            }))}
+          />
+
+          {selectedUniversities.length > 1 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedUniversities.map((university) => {
+                const active = activeUniversity?.id === university.id;
+                return (
+                  <button
+                    key={university.id}
+                    type="button"
+                    onClick={() => setActiveUniversityId(university.id)}
+                    className={`h-8 rounded-lg border px-2 text-[11px] font-semibold transition ${
+                      active
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-600"
+                    }`}
+                  >
+                    {university.display_name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <Field as="label" label="모집단위 검색">
+            <input
+              value={unitQuery}
+              onChange={(e) => setUnitQuery(e.target.value)}
+              placeholder={
+                activeUniversity
+                  ? `${activeUniversity.display_name} 모집단위`
+                  : "대학 선택 후 검색"
+              }
+              disabled={!activeUniversity}
+              className={`${inputClass} disabled:bg-slate-50 disabled:text-slate-400`}
+            />
+          </Field>
+          <OptionList
+            loading={unitLoading}
+            empty={Boolean(activeUniversity) && unitOptions.length === 0}
+          >
+            {unitOptions.map((unit) => {
+              const selected = selectedUnits.some((item) => item.id === unit.id);
+              return (
+                <button
+                  key={unit.id}
+                  type="button"
+                  onClick={() => selectUnit(unit)}
+                  className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition ${
+                    selected
+                      ? "border-slate-900 bg-slate-50"
+                      : "border-slate-200 bg-white hover:border-slate-400"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">
+                      {unit.unit_name}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {unit.university_name} · {recruitmentGroupLabel(unit.recruitment_group)}
+                      {unit.major_group ? ` · ${unit.major_group}` : ""}
+                    </span>
+                  </span>
+                  <Badge tone={unit.analysis_readiness === "ready" ? "green" : "slate"}>
+                    {readinessLabel(unit.analysis_readiness)}
+                  </Badge>
+                </button>
+              );
+            })}
+          </OptionList>
+
+          <TargetChipList
+            label="선택한 모집단위"
+            emptyLabel={
+              selectedUniversities.length
+                ? "대학 전체 모집단위"
+                : "전체 모집단위"
+            }
+            items={selectedUnits.map((unit) => ({
+              id: unit.id,
+              label: `${unit.university_name} ${unit.unit_name}`,
+              meta: readinessLabel(unit.analysis_readiness),
+              onRemove: () => removeUnit(unit.id),
+            }))}
+          />
+
           <Field label="지원 성향">
             <ChipGroup
               cols={3}
@@ -617,6 +917,185 @@ function subjectSummary(
 
 function gradeSummary(grade?: number): string {
   return grade !== undefined && !Number.isNaN(grade) ? `${grade}등급` : "";
+}
+
+async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`요청 실패(${res.status})`);
+  return (await res.json()) as T;
+}
+
+function isAbortError(e: unknown): boolean {
+  return (
+    e instanceof DOMException && e.name === "AbortError"
+  );
+}
+
+function OptionList({
+  loading,
+  empty,
+  children,
+}: {
+  loading: boolean;
+  empty: boolean;
+  children: ReactNode;
+}) {
+  if (loading) {
+    return (
+      <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        검색 중
+      </p>
+    );
+  }
+  if (empty) {
+    return (
+      <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        검색 결과 없음
+      </p>
+    );
+  }
+  return <div className="grid gap-2">{children}</div>;
+}
+
+function UniversityOptionButton({
+  university,
+  selected,
+  onSelect,
+}: {
+  university: ReferenceUniversityItem;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition ${
+        selected
+          ? "border-slate-900 bg-slate-50"
+          : "border-slate-200 bg-white hover:border-slate-400"
+      }`}
+    >
+      <span>
+        <span className="block text-sm font-semibold text-slate-900">
+          {university.display_name}
+        </span>
+        <span className="text-[11px] text-slate-500">
+          모집단위 {university.unit_count.toLocaleString("ko-KR")}개
+        </span>
+      </span>
+      {university.core_tier ? <Badge tone="slate">{university.core_tier}</Badge> : null}
+    </button>
+  );
+}
+
+function TargetChipList({
+  label,
+  emptyLabel,
+  items,
+}: {
+  label: string;
+  emptyLabel: string;
+  items: Array<{
+    id: string;
+    label: string;
+    meta?: string;
+    active?: boolean;
+    onActivate?: () => void;
+    onRemove: () => void;
+  }>;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      {items.length ? (
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((item) => (
+            <span
+              key={item.id}
+              className={`inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-semibold ${
+                item.active
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={item.onActivate}
+                disabled={!item.onActivate}
+                className="max-w-[13rem] truncate text-left disabled:cursor-default"
+              >
+                {item.label}
+              </button>
+              {item.meta ? (
+                <span
+                  className={`rounded-md px-1.5 py-0.5 text-[10px] ${
+                    item.active
+                      ? "bg-white/15 text-white"
+                      : "bg-white text-slate-500"
+                  }`}
+                >
+                  {item.meta}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                aria-label={`${item.label} 삭제`}
+                onClick={item.onRemove}
+                className={`flex size-5 items-center justify-center rounded-md ${
+                  item.active
+                    ? "bg-white/15 text-white"
+                    : "bg-white text-slate-500"
+                }`}
+              >
+                x
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-400">
+          {emptyLabel}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Badge({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "green" | "slate";
+}) {
+  return (
+    <span
+      className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold ${
+        tone === "green"
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-slate-100 text-slate-600"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function recruitmentGroupLabel(group: ReferenceUnitItem["recruitment_group"]): string {
+  return { ga: "가군", na: "나군", da: "다군", none: "군외" }[group];
+}
+
+function readinessLabel(readiness: ReferenceUnitItem["analysis_readiness"]): string {
+  return {
+    ready: "분석 가능",
+    limited: "검토 중",
+    unsupported: "제외",
+  }[readiness];
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function Card({
@@ -789,11 +1268,4 @@ function NumberInput({
       {...props}
     />
   );
-}
-
-function splitList(value: string): string[] {
-  return value
-    .split(/[,\n]/)
-    .map((v) => v.trim())
-    .filter(Boolean);
 }

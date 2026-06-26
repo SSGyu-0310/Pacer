@@ -84,14 +84,69 @@ export const saveScoresResponse = z.object({
 });
 
 /* ── §10.3 목표 저장 ── */
+const stringList = z.preprocess((value) => {
+  if (typeof value === "string") {
+    return value
+      .split(/[,\n]/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  if (value == null) return [];
+  return value;
+}, z.array(z.string()));
+
+const uuidList = z.preprocess((value) => {
+  if (typeof value === "string") {
+    return value
+      .split(/[,\n]/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  if (value == null) return [];
+  return value;
+}, z.array(z.string().uuid()));
+
 export const saveTargetRequest = z.object({
   exam_type: examType,
-  target_universities: z.array(z.string()),
-  target_major_groups: z.array(z.string()),
-  preferred_regions: z.array(z.string()),
+  target_universities: stringList.default([]),
+  target_university_ids: uuidList.default([]),
+  target_major_groups: stringList.default([]),
+  target_unit_ids: uuidList.default([]),
+  preferred_regions: stringList.default([]),
   risk_profile: riskProfile,
   susi_jungsi_preference: susiJungsiPreference,
 });
+
+/* ── §10.x 공개 레퍼런스 검색 — 학생 UI용, 산식/원문 비노출 ── */
+export const referenceUniversityItem = z.object({
+  id: z.string().uuid(),
+  related_ids: z.array(z.string().uuid()),
+  name: z.string(),
+  campus: z.string().nullable(),
+  display_name: z.string(),
+  core_tier: coreReviewTier.nullable(),
+  unit_count: z.number().int().nonnegative(),
+});
+export const referenceUniversitiesResponse = z.object({
+  universities: z.array(referenceUniversityItem),
+});
+export type ReferenceUniversityItem = z.infer<typeof referenceUniversityItem>;
+export type ReferenceUniversitiesResponse = z.infer<typeof referenceUniversitiesResponse>;
+
+export const referenceUnitItem = z.object({
+  id: z.string().uuid(),
+  university_id: z.string().uuid(),
+  university_name: z.string(),
+  unit_name: z.string(),
+  recruitment_group: recruitmentGroup,
+  major_group: z.string().nullable(),
+  analysis_readiness: z.enum(["ready", "limited", "unsupported"]),
+});
+export const referenceUnitsResponse = z.object({
+  units: z.array(referenceUnitItem),
+});
+export type ReferenceUnitItem = z.infer<typeof referenceUnitItem>;
+export type ReferenceUnitsResponse = z.infer<typeof referenceUnitsResponse>;
 
 /* ── §10.4 분석 실행 ── */
 export const runAnalysisRequest = z.object({

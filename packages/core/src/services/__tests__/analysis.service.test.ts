@@ -261,7 +261,9 @@ describe("AnalysisService.run (§17.3)", () => {
       cycleId: "cy-1",
       examType: "june_mock",
       targetUniversities: ["u-ok-univ"],
+      targetUniversityIds: [],
       targetMajorGroups: [],
+      targetUnitIds: [],
       preferredRegions: ["seoul"],
       riskProfile: "balanced",
       susiJungsiPreference: "jungsi",
@@ -272,6 +274,32 @@ describe("AnalysisService.run (§17.3)", () => {
       track: "natural",
       preferredRegions: ["seoul"],
       targetUniversities: ["u-ok-univ"],
+      targetUniversityIds: undefined,
+      targetUnitIds: undefined,
+    });
+  });
+
+  it("목표 ID가 있으면 이름 fallback보다 ID 필터를 우선한다", async () => {
+    const capture: { filter?: unknown } = {};
+    const { service } = makeService(new FakeAnalysisRepo(), {
+      cycleId: "cy-1",
+      examType: "june_mock",
+      targetUniversities: ["legacy-univ"],
+      targetUniversityIds: ["univ-id-1"],
+      targetMajorGroups: [],
+      targetUnitIds: ["unit-id-1"],
+      preferredRegions: ["seoul"],
+      riskProfile: "balanced",
+      susiJungsiPreference: "jungsi",
+    }, capture);
+    await service.run("cy-1", "es-1", "june_position");
+    expect(capture.filter).toEqual({
+      admissionYear: 2027,
+      track: "natural",
+      preferredRegions: ["seoul"],
+      targetUniversities: undefined,
+      targetUniversityIds: ["univ-id-1"],
+      targetUnitIds: ["unit-id-1"],
     });
   });
 
@@ -284,6 +312,8 @@ describe("AnalysisService.run (§17.3)", () => {
       track: "natural",
       preferredRegions: undefined,
       targetUniversities: undefined,
+      targetUniversityIds: undefined,
+      targetUnitIds: undefined,
     });
   });
 

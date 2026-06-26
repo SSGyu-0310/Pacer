@@ -84,6 +84,8 @@ export interface UnitRepository {
     track: Cycle["track"];
     preferredRegions?: string[];
     targetUniversities?: string[];
+    targetUniversityIds?: string[];
+    targetUnitIds?: string[];
   }): Promise<AnalysisCandidate[]>;
 }
 

@@ -5,7 +5,7 @@ import type {
   UnitRepository,
 } from "@pacer/core";
 import type { Confidence, ReviewVerdict, VerifiedStatus } from "@pacer/shared";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { mapRule } from "./rule-mapping";
 
 /**
@@ -24,20 +24,33 @@ export class PrismaUnitRepository implements UnitRepository {
     track: Cycle["track"];
     preferredRegions?: string[];
     targetUniversities?: string[];
+    targetUniversityIds?: string[];
+    targetUnitIds?: string[];
   }): Promise<AnalysisCandidate[]> {
+    const where: Prisma.AdmissionUnitWhereInput = {
+      year: filter.admissionYear,
+      active: true,
+    };
+
+    if (filter.targetUnitIds?.length) {
+      where.id = { in: filter.targetUnitIds };
+    } else if (filter.targetUniversityIds?.length) {
+      where.universityId = { in: filter.targetUniversityIds };
+    } else {
+      const universityFilter: Prisma.UniversityWhereInput = {};
+      if (filter.preferredRegions?.length) {
+        universityFilter.region = { in: filter.preferredRegions };
+      }
+      if (filter.targetUniversities?.length) {
+        universityFilter.name = { in: filter.targetUniversities };
+      }
+      if (Object.keys(universityFilter).length > 0) {
+        where.university = universityFilter;
+      }
+    }
+
     const rows = await this.db.admissionUnit.findMany({
-      where: {
-        year: filter.admissionYear,
-        active: true,
-        university: {
-          ...(filter.preferredRegions?.length
-            ? { region: { in: filter.preferredRegions } }
-            : {}),
-          ...(filter.targetUniversities?.length
-            ? { name: { in: filter.targetUniversities } }
-            : {}),
-        },
-      },
+      where,
       include: {
         university: true,
         rules: {

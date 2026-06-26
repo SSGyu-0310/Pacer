@@ -93,15 +93,23 @@ export class SimulationService {
     }
 
     const target = await this.targets.findLatest(cycleId, examScore.examType);
+    const targetUniversityIds = target?.targetUniversityIds.length
+      ? target.targetUniversityIds
+      : undefined;
+    const targetUnitIds = target?.targetUnitIds.length
+      ? target.targetUnitIds
+      : undefined;
     const candidates = await this.units.loadCandidates({
       admissionYear: cycle.admissionYear,
       track: cycle.track,
       preferredRegions: target?.preferredRegions.length
         ? target.preferredRegions
         : undefined,
-      targetUniversities: target?.targetUniversities.length
+      targetUniversities: !targetUniversityIds && target?.targetUniversities.length
         ? target.targetUniversities
         : undefined,
+      targetUniversityIds,
+      targetUnitIds,
     });
 
     const baseline = runEngine(examScore, candidates);

@@ -46,6 +46,8 @@
 
 웹 검수 도구가 빌드되어 있고, 저장이 **공용 Supabase DB에 바로 반영**된다. 즉 여기서 누른 verdict는 실시간으로 운영 decision에 들어간다 — 신중히.
 
+학생용 `/score` 화면은 검수 데이터의 **읽기 전용 선택 UI**다. 학생은 active 2027 대학/모집단위를 검색해 목표 ID를 저장할 수 있지만, 환산식·입결·검수 decision·`corrected_fields`를 보거나 수정하지 못한다. rule/outcome 수정은 이 `/admin/review` 도구에서만 한다.
+
 ### 접속 (3가지 모두 필요)
 1. 환경변수 `ADMIN_ENABLED=1` 와 `ADMIN_TOKEN=<토큰>` 을 설정하고 dev 서버를 띄운다.
 2. **localhost(127.0.0.1)에서만** 동작한다. 다른 host면 404/403. (`apps/web/lib/admin-auth.ts`)

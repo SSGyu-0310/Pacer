@@ -73,9 +73,9 @@ pnpm --filter @pacer/web build
 | 계산 엔진 (§8) | ✅ | 검증·정규화·자격판정·환산(정확/근사/불가)·입결비교·구간(보정 7종)·신뢰도·reason code. 순수·결정적 |
 | 분석 서비스 (§17.3) | ✅ | 검증→정규화→후보로드→…→스냅샷 저장 오케스트레이션. 분석 불가/자격 미달 투명 집계(§8.2) |
 | AI 리포트 (§11) | ✅ | LLM Gateway: 스키마(§11.3)·reason code 보캐블러리·금지어(§11.4)·면책(§13.3) 검증. 실모델/스텁 동일 파이프라인 |
-| API 라우트 (§10) | ✅ | cycles·scores·targets·analysis·reports·saved-units·notifications/subscribe. 익명 세션 소유권 검사 |
+| API 라우트 (§10) | ✅ | cycles·scores·targets·reference search·analysis·reports·saved-units·notifications/subscribe. 익명 세션 소유권 검사 |
 | DB (§9) | ✅ | Prisma 스키마 전체 + 마이그레이션 |
-| UI (모바일 퍼스트) | ✅ | 구간 5색 토큰, 칩 선택·자동 포커스 진행, 성적표/가채점 모드, 학생/학부모 탭 리포트 |
+| UI (모바일 퍼스트) | ✅ | 구간 5색 토큰, 칩 선택·자동 포커스 진행, 실데이터 대학/모집단위 검색, 성적표/가채점 모드, 학생/학부모 탭 리포트 |
 | PWA | ✅ | manifest·아이콘·Service Worker·OG 이미지 |
 | 알림 발송 | 🚧 | 구독 저장까지 완료. 발송 어댑터(알림톡/이메일/웹푸시)는 스텁 |
 | 관리자 데이터 도구 (§12) | ✅ | `/admin/review` 검수 워크플로(규칙·입결 큐, AI초안 확정, 클러스터 일괄). 사용법 `docs/reference-data/02-review-guide.md` |
@@ -107,7 +107,9 @@ pnpm --filter @pacer/web build
 ```
 POST /api/cycles                                  사이클 생성(익명 가능)
 POST /api/cycles/{id}/scores                      성적 저장 (시험별 upsert)
-POST /api/cycles/{id}/targets                     목표 저장
+POST /api/cycles/{id}/targets                     목표 저장 (ID 기반 + legacy 이름 fallback)
+GET  /api/reference/universities                  학생용 대학 검색(active 2027)
+GET  /api/reference/units                         학생용 모집단위 검색(active 2027)
 POST /api/cycles/{id}/analysis/run                분석 실행 → 스냅샷
 GET  /api/analysis/{snapshotId}/results           결과 조회 (면책 동봉)
 POST /api/cycles/{id}/reports                     AI 리포트 생성 (6종 report_type)

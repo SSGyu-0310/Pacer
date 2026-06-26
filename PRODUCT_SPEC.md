@@ -786,12 +786,17 @@ score_status:
 ### 입력 항목
 
 * 희망 계열
-* 희망 학과군
-* 선호 지역
-* 목표 대학군
-* 구체 목표 대학
+* 대학 검색 선택 (`University.id`)
+* 모집단위 검색 선택 (`AdmissionUnit.id`, 선택)
 * 지원 성향
 * 수시/정시 고민 정도
+
+현재 구현 메모:
+
+* 학생 UI는 DB의 active 2027 대학/모집단위를 검색형 combobox로 보여준다. 긴 dropdown이나 주관식 목표 문자열은 쓰지 않는다.
+* 대학만 선택하면 해당 대학의 active 모집단위 전체를 분석 후보로 보고, 모집단위를 선택하면 선택한 모집단위를 직접 후보로 본다.
+* 지역 데이터는 현재 대부분 `unknown`이라 v1 학생 화면에는 노출하지 않는다.
+* 환산식·검수 원문·`formula_json`·`corrected_fields`는 admin/server 전용이며 학생 UI에서 수정하거나 내려받지 않는다.
 
 ### 지원 성향
 
@@ -1430,12 +1435,16 @@ id
 cycle_id
 exam_type
 target_universities
+target_university_ids
 target_major_groups
+target_unit_ids
 preferred_regions
 risk_profile
 susi_jungsi_preference
 created_at
 ```
+
+`target_universities`/`target_major_groups`/`preferred_regions`는 과거 데이터와 리포트 표시 fallback을 위해 유지한다. 신규 저장/분석 후보 필터는 가능한 경우 `target_university_ids`/`target_unit_ids`를 1차 기준으로 사용한다.
 
 ## 9.6 University
 
@@ -1704,12 +1713,25 @@ Request:
 {
   "exam_type": "june_mock",
   "target_universities": ["연세대", "중앙대"],
+  "target_university_ids": ["uuid"],
   "target_major_groups": ["engineering"],
+  "target_unit_ids": ["uuid"],
   "preferred_regions": ["seoul", "gyeonggi"],
   "risk_profile": "balanced",
   "susi_jungsi_preference": "undecided"
 }
 ```
+
+`target_university_ids`/`target_unit_ids`는 optional이다. ID가 들어오면 서버가 실제 대학/모집단위 이름을 조회해 legacy 이름 배열도 함께 저장한다. ID가 없으면 기존 이름 배열 기반 데이터도 계속 분석 fallback으로 사용할 수 있다.
+
+## 10.3.1 학생용 레퍼런스 검색
+
+```http
+GET /api/reference/universities?q=가천&limit=20
+GET /api/reference/units?university_id=uuid&q=경영&major_group=상경&limit=30
+```
+
+응답은 선택 UI에 필요한 `id`, 표시 이름, 모집군, major group, 핵심대 tier, 분석 가능 상태만 포함한다. 환산식 원문, `formula_json`, 검수 `corrected_fields`, 입결 원문/evidence는 포함하지 않는다.
 
 ## 10.4 분석 실행
 
