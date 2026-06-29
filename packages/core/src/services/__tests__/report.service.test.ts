@@ -36,6 +36,9 @@ function result(
 ): UnitAnalysis {
   return {
     unit: { unitId, university, unitName: `${unitId}-m`, recruitmentGroup: "ga" },
+    metricMode: "converted",
+    metricLabel: "환산점수",
+    cutLabel: "환산점수 컷",
     convertedScore: 500,
     historicalReferenceScore: 495,
     scoreGap: 5,
@@ -190,6 +193,18 @@ describe("ReportService.generate (§11)", () => {
     expect(i.targetSummary.targetUniversities).toEqual(["연세대", "중앙대"]);
     // 목표 대학(연세대 reach, 중앙대 match) 중 가장 유리한 구간
     expect(i.targetSummary.targetDistance).toBe("match");
+    expect(i.positionReport?.metric).toEqual({
+      mode: "converted",
+      myValue: 500,
+      label: "환산점수",
+      cutLabel: "환산점수 컷",
+    });
+    expect(i.positionReport?.lines[0]).toMatchObject({
+      univ: "연세대",
+      dept: "u1-m",
+      gap: 5,
+      tier: "소신",
+    });
     expect(i.warnings).toHaveLength(1);
   });
 

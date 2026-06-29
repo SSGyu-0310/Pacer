@@ -43,7 +43,7 @@ export class LlmOutputError extends Error {
 export function parseReportOutput(raw: string): ReportContent {
   let json: unknown;
   try {
-    json = JSON.parse(raw);
+    json = JSON.parse(stripJsonFence(raw));
   } catch {
     throw new LlmOutputError("LLM 출력이 JSON이 아닙니다");
   }
@@ -74,4 +74,12 @@ export function parseReportOutput(raw: string): ReportContent {
     warnings: o.warnings,
     nextCta: o.next_cta,
   };
+}
+
+function stripJsonFence(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
 }

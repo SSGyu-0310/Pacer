@@ -1,4 +1,10 @@
-import type { Band, ExamType, SnapshotType } from "@pacer/shared";
+import type {
+  Band,
+  Confidence,
+  ExamType,
+  ReasonCode,
+  SnapshotType,
+} from "@pacer/shared";
 import type {
   AnalysisCandidate,
   AnalysisSnapshotMeta,
@@ -11,6 +17,7 @@ import {
   SMALL_QUOTA_THRESHOLD,
   checkEligibility,
   classifyBand,
+  comparePercentileAverageToHistorical,
   compareToHistorical,
   convertScore,
   englishPenaltySpreadPer100,
@@ -181,7 +188,61 @@ export function analyzeUnit(
   | { kind: "ineligible" | "unsupported" | "insufficientData" } {
   const { unit, rule, historical, quota, prevQuota } = candidate;
 
-  if (!rule) return { kind: "unsupported" };
+  if (!rule) {
+    const compared = comparePercentileAverageToHistorical(normalized, historical);
+    if (compared.percentileAverage === null) {
+      return { kind: "unsupported" };
+    }
+    if (compared.scoreGap === null) {
+      return { kind: "insufficientData" };
+    }
+
+    const confidence = capConfidenceByHistorical("low", historical?.confidence);
+    const smallQuota = quota !== null && quota < SMALL_QUOTA_THRESHOLD;
+    const factors: BandAdjustmentFactors = {
+      examType,
+      quotaChangeRatio:
+        quota !== null && prevQuota !== null && prevQuota > 0
+          ? (quota - prevQuota) / prevQuota
+          : null,
+      additionalPassRate:
+        historical?.additionalPass != null && quota !== null && quota > 0
+          ? historical.additionalPass / quota
+          : null,
+      smallQuota,
+      userEnglishGrade: normalized.bySubject.get("english")?.grade,
+      dataConfidence: confidence,
+    };
+    const band = classifyBand({
+      scoreGap: compared.scoreGap,
+      scale: 100,
+      factors,
+    });
+    const { reasonCodes, warnings } = generatePercentileOnlyReasonCodes({
+      examType,
+      normalized,
+      band,
+      confidence,
+      smallQuota,
+    });
+
+    return {
+      kind: "ok",
+      analysis: {
+        unit,
+        metricMode: "percentile",
+        metricLabel: "백분위 평균",
+        cutLabel: "백분위 컷",
+        convertedScore: compared.percentileAverage,
+        historicalReferenceScore: compared.historicalReferenceScore,
+        scoreGap: compared.scoreGap,
+        band,
+        confidence,
+        reasonCodes,
+        warnings,
+      },
+    };
+  }
 
   // 6. 지원 조건 판정 — 미충족은 제외 (§8.1-3)
   const eligibility = checkEligibility(rule.eligibility, normalized);
@@ -198,11 +259,11 @@ export function analyzeUnit(
   if (compared.scoreGap === null) return { kind: "insufficientData" };
 
   // 10. 신뢰도 (band 보정 입력이므로 먼저 산출)
-  const confidence = scoreConfidence({
+  const confidence = capConfidenceByHistorical(scoreConfidence({
     method: converted.method,
     hasApproximations: converted.approximations.length > 0,
     hasHistorical: historical !== null,
-  });
+  }), historical?.confidence);
 
   // 9. 구간 분류 (§8.3 보정 요소)
   const smallQuota = quota !== null && quota < SMALL_QUOTA_THRESHOLD;
@@ -244,6 +305,10 @@ export function analyzeUnit(
     kind: "ok",
     analysis: {
       unit,
+      metricMode: converted.method === "exact" ? "converted" : "percentile",
+      metricLabel:
+        converted.method === "exact" ? "환산점수" : "백분위 기준 비교",
+      cutLabel: converted.method === "exact" ? "환산점수 컷" : "백분위 컷",
       convertedScore: converted.convertedScore,
       historicalReferenceScore: compared.historicalReferenceScore,
       scoreGap: compared.scoreGap,
@@ -253,4 +318,57 @@ export function analyzeUnit(
       warnings,
     },
   };
+}
+
+function generatePercentileOnlyReasonCodes(args: {
+  examType: ExamType;
+  normalized: NormalizedScores;
+  band: Band;
+  confidence: Confidence;
+  smallQuota: boolean;
+}): { reasonCodes: ReasonCode[]; warnings: ReasonCode[] } {
+  const { examType, normalized, band, confidence, smallQuota } = args;
+  const reasonCodes: ReasonCode[] = [];
+  const warnings: ReasonCode[] = [];
+  const add = (list: ReasonCode[], code: ReasonCode) => {
+    if (!list.includes(code)) list.push(code);
+  };
+
+  if (band === "stable" || band === "match") add(reasonCodes, "percentile_fit");
+  if (normalized.weaknessSubjects.includes("math")) {
+    add(reasonCodes, "simulate_math_up");
+  }
+  if (
+    normalized.weaknessSubjects.includes("inquiry1") ||
+    normalized.weaknessSubjects.includes("inquiry2")
+  ) {
+    add(reasonCodes, "simulate_explore_up");
+  }
+  if (examType === "csat") add(reasonCodes, "compare_after_jinhak");
+  if (band === "reach" || band === "challenge") {
+    add(reasonCodes, "build_application_plan");
+  }
+  if (confidence === "low" || confidence === "limited") {
+    add(warnings, "low_data_confidence");
+  }
+  if (smallQuota) add(warnings, "small_quota_risk");
+
+  return { reasonCodes, warnings };
+}
+
+const CONFIDENCE_ORDER: Record<Confidence, number> = {
+  limited: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+};
+
+function capConfidenceByHistorical(
+  calculated: Confidence,
+  historical?: Confidence,
+): Confidence {
+  if (!historical) return calculated;
+  const historicalRank = CONFIDENCE_ORDER[historical] ?? 0;
+  const calculatedRank = CONFIDENCE_ORDER[calculated] ?? 0;
+  return historicalRank < calculatedRank ? historical : calculated;
 }

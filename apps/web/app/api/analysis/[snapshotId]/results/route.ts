@@ -1,7 +1,11 @@
 import { DISCLAIMER } from "@pacer/shared";
 import { NextResponse } from "next/server";
 import { authorizeCycle } from "@/lib/authz";
-import { getAnalysisService, getScoreService } from "@/lib/container";
+import {
+  getAnalysisService,
+  getScoreService,
+  getTargetRepository,
+} from "@/lib/container";
 import { fromDomainError, notFound } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -28,10 +32,29 @@ export async function GET(
     // 본인 입력 점수(과목·표준점수·백분위) — 분포 시각화용. 환산식/입결이 아닌
     // 사용자 자신의 데이터이므로 §8.1 비노출 원칙에 저촉되지 않는다.
     const examScore = await getScoreService().getById(meta.examScoreId);
+    const target = await getTargetRepository().findLatest(
+      meta.cycleId,
+      examScore.examType,
+    );
+    const hasTarget = Boolean(
+      target &&
+        (target.targetUniversityIds.length > 0 ||
+          target.targetUnitIds.length > 0 ||
+          target.targetUniversities.length > 0 ||
+          target.targetMajorGroups.length > 0 ||
+          target.preferredRegions.length > 0),
+    );
     return NextResponse.json({
       snapshot_id: snapshotId,
       exam_type: examScore.examType,
       track: cycle.track,
+      analysis_scope: hasTarget ? "targeted" : "exploration",
+      target_summary: {
+        universities: target?.targetUniversities ?? [],
+        university_ids: target?.targetUniversityIds ?? [],
+        unit_ids: target?.targetUnitIds ?? [],
+        preferred_regions: target?.preferredRegions ?? [],
+      },
       subject_scores: examScore.scores.map((s) => ({
         subject: s.subject,
         selection: s.selection ?? null,
@@ -46,6 +69,11 @@ export async function GET(
         recruitment_group: r.unit.recruitmentGroup,
         band: r.band,
         confidence: r.confidence,
+        metric_mode: r.metricMode,
+        metric_label: r.metricLabel,
+        cut_label: r.cutLabel,
+        my_value: r.convertedScore,
+        reference_value: r.historicalReferenceScore,
         score_gap: r.scoreGap,
         reason_codes: r.reasonCodes,
         warnings: r.warnings,

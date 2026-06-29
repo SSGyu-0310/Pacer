@@ -86,6 +86,9 @@ export interface ConvertedScore {
   approximations: string[];
 }
 
+/** 분석 결과의 비교 지표. converted는 대학 환산점수, percentile은 백분위 평균 기준 비교다. */
+export type ComparisonMetricMode = "converted" | "percentile";
+
 // ---------------------------------------------------------------------------
 // 레퍼런스 데이터 도메인 표현 (§9.8 AdmissionRule / §9.9 HistoricalOutcome)
 // Prisma 모델이 아니라 엔진이 소비하는 형태다. ★ 서버 전용 — 클라이언트 노출 금지(§8.1).
@@ -420,6 +423,10 @@ export interface AnalysisSummary {
 /** 모집단위별 분석 결과 (§9.11) */
 export interface UnitAnalysis {
   unit: AdmissionUnitRef;
+  /** UI/리포트가 환산점수와 백분위 비교를 혼동하지 않도록 저장하는 지표 메타. */
+  metricMode: ComparisonMetricMode;
+  metricLabel: string;
+  cutLabel: string;
   convertedScore: number | null;
   historicalReferenceScore: number | null;
   scoreGap: number;

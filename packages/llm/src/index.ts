@@ -3,6 +3,7 @@ export * from "./gateway";
 export * from "./client";
 export * from "./stub-client";
 export * from "./anthropic-client";
+export * from "./glm-client";
 export * from "./output-schema";
 export * from "./reason-labels";
 export * from "./banned-words";

@@ -35,6 +35,7 @@ function input(over: Partial<LlmReportInput> = {}): LlmReportInput {
       targetUniversities: ["연세대", "중앙대"],
       targetDistance: "reach",
     },
+    positionReport: null,
     warnings: ["본 결과는 6월 모의평가 기준이며, 실제 수능 결과와 다를 수 있습니다."],
     ...over,
   };

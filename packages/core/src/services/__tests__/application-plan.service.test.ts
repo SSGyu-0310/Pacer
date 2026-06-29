@@ -23,6 +23,9 @@ function unit(
 ): UnitAnalysis {
   return {
     unit: { unitId, university: `${unitId}-대`, unitName: "학과", recruitmentGroup: group },
+    metricMode: "converted",
+    metricLabel: "환산점수",
+    cutLabel: "환산점수 컷",
     convertedScore: 500,
     historicalReferenceScore: 495,
     scoreGap: 5,

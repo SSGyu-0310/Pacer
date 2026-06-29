@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ConvertedScore } from "../../domain/entities";
-import { compareToHistorical } from "../compare";
+import {
+  comparePercentileAverageToHistorical,
+  compareToHistorical,
+} from "../compare";
+import { normalizeScores } from "../normalize";
+import { baseScores } from "./fixtures";
 import { groupByRecruitmentGroup } from "../recruitment";
 import { historicalRef } from "./fixtures";
 
@@ -78,6 +83,16 @@ describe("compareToHistorical (§8.3, §18.1 입결 대비 점수차)", () => {
       historicalRef(),
     );
     expect(r.scoreGap).toBeNull();
+  });
+
+  it("no-formula Tier0는 국·수·탐 백분위 평균과 percentileCut을 직접 비교한다", () => {
+    const r = comparePercentileAverageToHistorical(
+      normalizeScores(baseScores()),
+      historicalRef({ percentileCut: 92 }),
+    );
+    expect(r.percentileAverage).toBe(93.25);
+    expect(r.historicalReferenceScore).toBe(92);
+    expect(r.scoreGap).toBe(1.25);
   });
 });
 

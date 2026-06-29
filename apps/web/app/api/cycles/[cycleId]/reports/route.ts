@@ -7,6 +7,7 @@ import { badRequest, fromDomainError, notFound } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * §10.6 AI 리포트 생성 — ReportService.generate.
@@ -75,6 +76,7 @@ function serializeReport(
       one_line_summary: r.content.oneLineSummary,
       student_summary: r.content.studentSummary,
       parent_summary: r.content.parentSummary,
+      position_report: r.content.positionReport ?? null,
       strengths: r.content.strengths.map((s) => ({
         title: s.title,
         description: s.description,

@@ -5,6 +5,7 @@ export * from "./normalize";
 export * from "./eligibility";
 export * from "./convert";
 export * from "./compare";
+export * from "./key-weight";
 export * from "./recruitment";
 export * from "./band";
 export * from "./confidence";

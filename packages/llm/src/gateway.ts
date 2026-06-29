@@ -34,14 +34,40 @@ export class LlmGateway implements LlmReporter {
       ? parsed
       : { ...parsed, warnings: [...parsed.warnings, DISCLAIMER] };
 
-    // §11.4 금지어 필터 — 위반 시 throw(차단). 통과 못한 리포트는 저장되지 않는다.
+    // §11.4 금지어 필터 — LLM 생성 산문만 검사(positionReport는 엔진 계산 데이터이므로 제외).
     assertNoBannedPhrases(content);
 
     return {
-      content,
+      content: { ...content, positionReport: input.positionReport },
       modelName: this.client.modelName,
       promptVersion: PROMPT_VERSION,
     };
+  }
+}
+
+/**
+ * 운영 복원력(§11) — 1차 리포터(실모델)가 실패하면 2차(결정론적 스텁)로 폴백한다.
+ * 포지션 리포트의 숫자·라인·시나리오는 엔진 계산값이라 어느 쪽이든 동일하고,
+ * 폴백은 산문만 템플릿으로 대체한다("데이터가 뼈대, AI는 살" — blueprint).
+ * 실모델 지연/검증 실패에도 사용자는 항상 유효한 리포트를 받는다.
+ */
+export class FallbackLlmReporter implements LlmReporter {
+  constructor(
+    private readonly primary: LlmReporter,
+    private readonly fallback: LlmReporter,
+  ) {}
+
+  async generate(input: LlmReportInput): ReturnType<LlmReporter["generate"]> {
+    try {
+      return await this.primary.generate(input);
+    } catch (e) {
+      console.warn(
+        `[report] 1차 LLM 실패 → 결정론적 폴백 사용: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+      return this.fallback.generate(input);
+    }
   }
 }
 
