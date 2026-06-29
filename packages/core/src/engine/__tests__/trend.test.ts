@@ -14,6 +14,9 @@ function unit(
 ): UnitAnalysis {
   return {
     unit: { unitId, university, unitName: `${unitId}-학과`, recruitmentGroup: "ga" },
+    metricMode: "converted",
+    metricLabel: "환산점수",
+    cutLabel: "환산점수 컷",
     convertedScore: 500,
     historicalReferenceScore: 495,
     scoreGap: 5,

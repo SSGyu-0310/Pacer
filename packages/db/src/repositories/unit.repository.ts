@@ -292,7 +292,8 @@ function historicalCompatibleWithRule(
     percentileCut: number | null;
   } | null,
 ): boolean {
-  if (!rule || !historical) return false;
+  if (!historical) return false;
+  if (!rule) return isPercentileReference(historical.percentileCut);
 
   const verified =
     rule.verifiedStatus === "verified" || rule.verifiedStatus === "live";

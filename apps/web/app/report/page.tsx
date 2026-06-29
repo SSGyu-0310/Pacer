@@ -1,11 +1,13 @@
 "use client";
 
+import { DISCLAIMER } from "@pacer/shared";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Disclaimer } from "@/components/Disclaimer";
 import { CheckIcon, SparklesIcon } from "@/components/icons";
 import { track } from "@/lib/analytics";
 import { ADMISSION_YEAR, readStoredState, writeStoredState } from "@/lib/client";
+import { BAND_META, type Band } from "@/lib/labels";
 
 type ReportResponse = {
   report_id: string;
@@ -13,6 +15,32 @@ type ReportResponse = {
     one_line_summary: string;
     student_summary: string;
     parent_summary: string;
+    position_report?: {
+      scope: "exploration" | "targeted";
+      season?: {
+        current: string;
+        next: string | null;
+        sampleConfidence: "low" | "medium" | "high";
+      };
+      metric: {
+        mode: "percentile" | "converted";
+        myValue: number | null;
+        label: string;
+        cutLabel: string;
+      };
+      lines: {
+        univ: string;
+        dept: string;
+        group: string;
+        keyWeight: string | null;
+        myValue: number | null;
+        cut: number | null;
+        gap: number;
+        tier: string;
+        reliability: "high" | "mid" | "low" | "limited";
+      }[];
+      scenarios: { lever: string; delta: number; unlocks: string }[];
+    } | null;
     strengths: { title: string; description: string; reason_code: string }[];
     weaknesses: { title: string; description: string; reason_code: string }[];
     recommended_actions: string[];
@@ -115,19 +143,47 @@ export default function ReportPage() {
   }
 
   const { content } = report;
+  const position = content.position_report ?? null;
+  const representativeLine = position?.lines[0] ?? null;
+  const isExploration = position?.scope === "exploration";
+  const representativeBand = representativeLine
+    ? bandFromLabel(representativeLine.tier)
+    : null;
+  // 면책 문구는 하단 Disclaimer에서 1회만 노출. 저장 시점 문구가 상수와 미세하게
+  // 달라도(버전 변경 등) 중복되지 않도록 시그니처 문구로 걸러낸다.
+  const warnings = content.warnings.filter(
+    (w) => w !== DISCLAIMER && !w.includes("합격을 보장하지 않습니다"),
+  );
 
   return (
     <main className="pb-8">
-      <header className="space-y-1.5 pb-4 pt-2">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-          6모 포지션 리포트
+      <header className="space-y-2 pb-4 pt-2">
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium text-slate-500">
+            {isExploration ? "6모 전체 라인 리포트" : "6모 포지션 리포트"}
+          </p>
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
             <SparklesIcon className="size-2.5" /> AI 생성
           </span>
-        </p>
+        </div>
+        {representativeBand && representativeLine ? (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${BAND_META[representativeBand].badge}`}
+          >
+            {BAND_META[representativeBand].label}
+            <span className="font-semibold tabular-nums opacity-80">
+              {formatSigned(representativeLine.gap)}
+            </span>
+          </span>
+        ) : null}
         <h1 className="text-xl font-bold leading-snug text-slate-900">
           {content.one_line_summary}
         </h1>
+        {isExploration ? (
+          <p className="text-sm leading-6 text-slate-500">
+            지망 학교를 정하기 전, 전체 모집단위와 비교해 먼저 볼 성적대 라인을 정리했습니다.
+          </p>
+        ) : null}
       </header>
 
       {/* 학생/학부모 탭 */}
@@ -152,6 +208,114 @@ export default function ReportPage() {
           </button>
         ))}
       </div>
+
+      {position && (
+        <section className="mt-4 space-y-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-xs font-bold text-slate-500">핵심 숫자</h2>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <MetricCell
+                label={`내 ${position.metric.label}`}
+                value={formatNullable(position.metric.myValue)}
+              />
+              <MetricCell
+                label={position.metric.cutLabel}
+                value={formatNullable(representativeLine?.cut ?? null)}
+              />
+              <MetricCell
+                label="격차"
+                value={formatSigned(representativeLine?.gap ?? null)}
+                emphasis
+              />
+            </div>
+            {representativeLine && representativeLine.cut != null ? (
+              <PositionGauge
+                gap={representativeLine.gap}
+                mode={position.metric.mode}
+                band={representativeBand}
+              />
+            ) : null}
+          </div>
+
+          {position.lines.length > 0 && (
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-4 py-3">
+                <h2 className="text-xs font-bold text-slate-500">
+                  {isExploration ? "성적대 라인" : "지원 가능 라인"}
+                </h2>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {position.lines.slice(0, 5).map((line) => (
+                  <div
+                    key={`${line.univ}-${line.dept}-${line.group}`}
+                    className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {line.univ} {line.dept}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {[
+                          line.group && line.group !== "-" ? `${line.group}군` : null,
+                          line.keyWeight ?? "반영비 검수중",
+                          line.cut != null ? `기준 ${formatNullable(line.cut)}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`text-sm font-bold tabular-nums ${
+                          line.gap >= 0 ? "text-band-stable-fg" : "text-band-challenge-fg"
+                        }`}
+                      >
+                        {formatSigned(line.gap)}
+                      </p>
+                      <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                        {line.tier}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {position.scenarios.length > 0 && (
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-4 py-3">
+                <h2 className="text-xs font-bold text-slate-500">
+                  What-if · 무엇을 올리면 무엇이 열리나
+                </h2>
+                <p className="mt-0.5 text-[11px] leading-4 text-slate-400">
+                  지금 성적에서 한 과목을 올렸을 때 계산되는 위치 변화입니다. 성적 상승 예측이 아닙니다.
+                </p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {position.scenarios.map((scenario) => (
+                  <div
+                    key={`${scenario.lever}-${scenario.unlocks}`}
+                    className="flex items-center justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {scenario.lever}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11px] text-band-match-fg">
+                        {scenario.unlocks}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-band-stable-soft px-2 py-1 text-xs font-bold tabular-nums text-band-stable-fg">
+                      {formatSigned(scenario.delta)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </section>
+      )}
 
       {tab === "student" ? (
         <div className="mt-4 space-y-4">
@@ -213,18 +377,25 @@ export default function ReportPage() {
         </section>
       )}
 
-      {/* 고지/주의 */}
-      <section className="mt-4 space-y-1.5 rounded-2xl bg-slate-100 p-4">
-        {content.warnings.map((warning) => (
-          <p key={warning} className="text-xs leading-5 text-slate-500">
-            {warning}
-          </p>
-        ))}
-      </section>
+      {/* 타임라인 — 6모는 시즌의 출발점(불안 조성이 아니라 추적 동기) */}
+      <SeasonTimeline season={position?.season ?? null} />
+
+      {/* 고지/주의 — 면책 문구는 하단 Disclaimer에서 1회만 노출(중복 제거) */}
+      {warnings.length > 0 && (
+        <section className="mt-4 space-y-1.5 rounded-2xl bg-slate-100 p-4">
+          {warnings.map((warning) => (
+            <p key={warning} className="text-xs leading-5 text-slate-500">
+              {warning}
+            </p>
+          ))}
+        </section>
+      )}
 
       {/* next CTA */}
       <p className="mt-4 rounded-2xl border border-band-match-soft bg-band-match-soft/60 p-4 text-sm font-medium leading-6 text-band-match-fg">
-        {content.next_cta}
+        {isExploration
+          ? "분석 결과에서 관심 모집단위를 저장하면 다음 리포트는 목표 기준으로 더 좁혀 볼 수 있습니다."
+          : content.next_cta}
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -242,13 +413,147 @@ export default function ReportPage() {
         </Link>
       </div>
 
-      <p className="mt-4 text-[10px] text-slate-400">
-        {report.model_name} · prompt {report.prompt_version}
-      </p>
-
       <Disclaimer />
     </main>
   );
+}
+
+/** tier 라벨(한국어) → Band enum 역매핑 — 배지 색상에 사용 */
+const TIER_LABEL_TO_BAND: Record<string, Band> = Object.entries(BAND_META).reduce(
+  (acc, [band, meta]) => {
+    acc[meta.label] = band as Band;
+    return acc;
+  },
+  {} as Record<string, Band>,
+);
+
+function bandFromLabel(tier: string): Band | null {
+  return TIER_LABEL_TO_BAND[tier] ?? null;
+}
+
+/**
+ * 위치 게이지(§2) — 합격선(컷)=중앙 기준 내 점수가 어디에 있는지 시각화.
+ * 지표(환산/백분위)에 따라 시각 범위를 달리해 막대가 항상 꽉 차 보이지 않게 한다.
+ */
+function PositionGauge({
+  gap,
+  mode,
+  band,
+}: {
+  gap: number;
+  mode: "percentile" | "converted";
+  band: Band | null;
+}) {
+  const range = mode === "converted" ? 15 : 6;
+  const clamped = Math.max(-range, Math.min(range, gap));
+  const fillPct = (Math.abs(clamped) / range) * 50;
+  const positive = gap >= 0;
+  const barColor = band ? BAND_META[band].bar : positive ? "bg-band-stable" : "bg-band-challenge";
+
+  return (
+    <div className="mt-4">
+      <div className="relative h-2 rounded-full bg-slate-100">
+        {/* 중앙(합격선) 기준선 */}
+        <span className="absolute left-1/2 top-1/2 h-3.5 w-px -translate-x-1/2 -translate-y-1/2 bg-slate-300" />
+        {/* 내 위치 막대 — 중앙에서 좌(불리)/우(유리)로 */}
+        <span
+          className={`absolute top-0 h-2 rounded-full ${barColor}`}
+          style={
+            positive
+              ? { left: "50%", width: `${fillPct}%` }
+              : { right: "50%", width: `${fillPct}%` }
+          }
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-400">
+        <span>합격선 아래</span>
+        <span>합격선</span>
+        <span>합격선 위</span>
+      </div>
+    </div>
+  );
+}
+
+/** 시즌 타임라인(§7) — 6월 ─●─ 9월 ─ 수능, '지금 여기' 마커 */
+function SeasonTimeline({
+  season,
+}: {
+  season: { current: string; next: string | null; sampleConfidence: string } | null;
+}) {
+  const current = season?.current ?? "6월";
+  const stops = ["6월", "9월", "수능"];
+  const note =
+    current === "6월"
+      ? "지금은 6월 표본 기준입니다. 9월 모평 이후 정밀도가 올라가니 같은 기준으로 이어서 확인하세요."
+      : current === "9월"
+        ? "9월 모평 기준입니다. 수능까지 변화를 이어서 추적하세요."
+        : "수능 기준 위치입니다.";
+
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="text-xs font-bold text-slate-500">시즌 타임라인</h2>
+      <div className="mt-3 flex items-center">
+        {stops.map((stop, index) => {
+          const active = stop === current;
+          return (
+            <div key={stop} className="flex flex-1 items-center last:flex-none">
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  className={`size-3 rounded-full ${
+                    active ? "bg-slate-900 ring-4 ring-slate-900/10" : "bg-slate-300"
+                  }`}
+                />
+                <span
+                  className={`text-[11px] ${
+                    active ? "font-bold text-slate-900" : "font-medium text-slate-400"
+                  }`}
+                >
+                  {stop}
+                  {active ? " (지금)" : ""}
+                </span>
+              </div>
+              {index < stops.length - 1 ? (
+                <span className="mx-1 h-px flex-1 bg-slate-200" />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-500">{note}</p>
+    </section>
+  );
+}
+
+function MetricCell({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-slate-50 px-2 py-3">
+      <p className="text-[10px] font-medium text-slate-500">{label}</p>
+      <p
+        className={`mt-1 text-lg font-bold tabular-nums ${
+          emphasis ? "text-slate-950" : "text-slate-800"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function formatNullable(value: number | null | undefined): string {
+  return value === null || value === undefined ? "-" : value.toFixed(1);
+}
+
+function formatSigned(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "-";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
 }
 
 async function fetchCurrentCycleId(): Promise<string | null> {

@@ -23,6 +23,13 @@ type AnalysisResponse = {
   snapshot_id: string;
   exam_type: string;
   track: string;
+  analysis_scope: "exploration" | "targeted";
+  target_summary: {
+    universities: string[];
+    university_ids: string[];
+    unit_ids: string[];
+    preferred_regions: string[];
+  };
   subject_scores: SubjectScoreView[];
   results: AnalysisUnit[];
   disclaimer: string;
@@ -248,17 +255,33 @@ export default function AnalysisPage() {
   }
 
   const total = data.results.length;
+  const isExploration = data.analysis_scope === "exploration";
+  const targetLabel =
+    data.target_summary.universities.length > 0
+      ? `${data.target_summary.universities.slice(0, 3).join(", ")}${
+          data.target_summary.universities.length > 3 ? " 외" : ""
+        }`
+      : data.target_summary.unit_ids.length > 0
+        ? "선택 모집단위"
+        : "목표 조건";
 
   return (
     <main className="pb-4">
       {/* 헤더 */}
       <header className="space-y-1.5 pb-5 pt-2">
         <p className="text-xs font-medium text-slate-500">
-          6월 모의평가 기준 · 참고용 분석
+          {isExploration
+            ? "6월 모의평가 기준 · 전체 라인 진단"
+            : "6월 모의평가 기준 · 목표 조건 분석"}
         </p>
         <h1 className="text-2xl font-bold leading-tight text-slate-900">
-          내 위치를 정리했어요
+          {isExploration ? "지망 전, 성적대부터 봅니다" : "목표 기준 위치를 정리했어요"}
         </h1>
+        <p className="text-sm leading-6 text-slate-500">
+          {isExploration
+            ? "대학을 고르기 전 단계입니다. 전체 모집단위와 비교해 안정·적정·소신 라인을 먼저 잡습니다."
+            : `${targetLabel} 기준으로 비교합니다.`}
+        </p>
       </header>
 
       {/* 전국 분포 위 내 위치 — 점수 입력 직후 가장 먼저 보이는 시각화 */}
@@ -271,11 +294,17 @@ export default function AnalysisPage() {
       {/* 요약 카드 */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-bold text-slate-900">
-          {total > 0 ? `${total}개 모집단위 분석 완료` : "분석 가능한 모집단위가 없습니다"}
+          {total > 0
+            ? isExploration
+              ? `${total}개 모집단위로 성적대 라인 산출`
+              : `${total}개 목표 후보 분석 완료`
+            : "분석 가능한 모집단위가 없습니다"}
         </h2>
         <p className="mt-1 text-xs leading-5 text-slate-500">
           {total > 0
-            ? "전년도 입결 기준으로 구간을 나눴어요. 합격 여부가 아닌 상대적 위치 해석입니다."
+            ? isExploration
+              ? "아직 지망을 정하지 않아도 됩니다. 전년도 입결 기준으로 어디부터 볼지 좁히는 참고용 위치입니다."
+              : "전년도 입결 기준으로 구간을 나눴어요. 합격 여부가 아닌 상대적 위치 해석입니다."
             : "입력한 과목 조합이나 목표 조건으로는 P0 샘플 데이터에서 신뢰도 있는 비교가 어려워요."}
         </p>
         <div className="mt-4">
@@ -286,6 +315,16 @@ export default function AnalysisPage() {
       {/* 모집단위 카드 리스트 */}
       {total > 0 ? (
         <section className="mt-4 space-y-3">
+          <div className="px-1">
+            <h2 className="text-xs font-bold text-slate-500">
+              {isExploration ? "먼저 볼 만한 라인" : "비교 결과"}
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {isExploration
+                ? "저장한 모집단위는 이후 목표 리포트와 원서 조합의 기준점으로 쓸 수 있습니다."
+                : "관심 모집단위를 저장해 다음 시험 이후 같은 기준으로 추적할 수 있습니다."}
+            </p>
+          </div>
           {data.results.map((result, index) => (
             <UnitCard
               key={result.unit_id}

@@ -431,6 +431,9 @@ model AnalysisResult {
   id                      String     @id @default(uuid())
   analysisSnapshotId      String
   unitId                  String
+  metricMode              String     @default("converted")
+  metricLabel             String     @default("환산점수")
+  cutLabel                String     @default("환산점수 컷")
   convertedScore          Float?
   historicalReferenceScore Float?
   scoreGap                Float?

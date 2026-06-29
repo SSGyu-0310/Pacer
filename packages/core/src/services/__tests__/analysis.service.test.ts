@@ -63,7 +63,7 @@ function unit(unitId: string, group: "ga" | "na" | "da" = "ga") {
   };
 }
 
-/** 6개 후보: 정상 / 규칙없음 / 자격미달 / 입결없음 / 미검수 근사 / exact-blocked 근사 */
+/** 6개 후보: 정상 / 규칙없음 백분위 / 자격미달 / 입결없음 / 미검수 근사 / exact-blocked 근사 */
 function candidates(): AnalysisCandidate[] {
   return [
     {
@@ -208,15 +208,16 @@ describe("AnalysisService.run (§17.3)", () => {
     expect(r.snapshotId).toBe("snap-1");
     expect(r.summary).toEqual({
       candidates: 6,
-      analyzed: 3,
+      analyzed: 4,
       ineligible: 1,
-      unsupported: 1,
+      unsupported: 0,
       insufficientData: 1,
     });
     const total = Object.values(r.bandDistribution).reduce((a, b) => a + b, 0);
-    expect(total).toBe(3);
+    expect(total).toBe(4);
     expect(repo.saved!.results.map((x) => x.unit.unitId)).toEqual([
       "u-ok",
+      "u-no-rule",
       "u-approx",
       "u-required-input-approx",
     ]);
@@ -228,9 +229,24 @@ describe("AnalysisService.run (§17.3)", () => {
     const ok = repo.saved!.results.find((x) => x.unit.unitId === "u-ok")!;
     expect(ok.convertedScore).toBe(563.5);
     expect(ok.historicalReferenceScore).toBe(560);
+    expect(ok.metricMode).toBe("converted");
     expect(ok.scoreGap).toBe(3.5);
     expect(ok.band).toBe("match"); // 0.35per100 − 0.3(6모) = 0.05
     expect(ok.confidence).toBe("high");
+  });
+
+  it("규칙이 없어도 percentileCut이 있으면 백분위 평균 Tier0 분석을 만든다", async () => {
+    const { service, repo } = makeService();
+    await service.run("cy-1", "es-1", "june_position");
+    const noRule = repo.saved!.results.find((x) => x.unit.unitId === "u-no-rule")!;
+    expect(noRule.metricMode).toBe("percentile");
+    expect(noRule.metricLabel).toBe("백분위 평균");
+    expect(noRule.cutLabel).toBe("백분위 컷");
+    expect(noRule.convertedScore).toBe(93.25);
+    expect(noRule.historicalReferenceScore).toBe(92);
+    expect(noRule.scoreGap).toBe(1.25);
+    expect(noRule.confidence).toBe("low");
+    expect(noRule.warnings).toContain("low_data_confidence");
   });
 
   it("근사 후보(u-approx): 백분위 합성, 신뢰도 low + low_data_confidence 경고", async () => {
@@ -238,6 +254,7 @@ describe("AnalysisService.run (§17.3)", () => {
     await service.run("cy-1", "es-1", "june_position");
     const ap = repo.saved!.results.find((x) => x.unit.unitId === "u-approx")!;
     expect(ap.convertedScore).toBe(93.9);
+    expect(ap.metricMode).toBe("percentile");
     expect(ap.scoreGap).toBe(1.9); // 92 백분위 컷 대비
     expect(ap.confidence).toBe("low");
     expect(ap.warnings).toContain("low_data_confidence");
@@ -349,7 +366,7 @@ describe("AnalysisService.getResults (§10.5)", () => {
     const { service } = makeService();
     await service.run("cy-1", "es-1", "june_position");
     const results = await service.getResults("snap-1");
-    expect(results).toHaveLength(3);
+    expect(results).toHaveLength(4);
   });
 
   it("없는 스냅샷 → NotFoundError", async () => {

@@ -34,11 +34,14 @@ import {
 import {
   AnthropicExtractLlmClient,
   AnthropicLlmClient,
+  FallbackLlmReporter,
+  GlmLlmClient,
   LlmExtractGateway,
   LlmGateway,
   StubExtractLlmClient,
   StubLlmClient,
 } from "@pacer/llm";
+import type { LlmReporter } from "@pacer/core";
 
 export function getCycleService(): CycleService {
   return new CycleService(new PrismaCycleRepository(prisma));
@@ -63,19 +66,28 @@ export function getAnalysisService(): AnalysisService {
 }
 
 export function getReportService(): ReportService {
-  // API 키가 없으면 결정적 스텁 — 게이트웨이의 스키마·금지어 검증은 동일하게 적용된다.
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const client = apiKey
-    ? new AnthropicLlmClient(apiKey, process.env.LLM_MODEL_NAME)
-    : new StubLlmClient();
+  // ZAI_API_KEY 우선, 없으면 ANTHROPIC_API_KEY, 둘 다 없으면 결정적 스텁.
+  const zaiKey = process.env.ZAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const client = zaiKey
+    ? new GlmLlmClient(zaiKey, process.env.LLM_MODEL_NAME ?? "glm-5.1")
+    : anthropicKey
+      ? new AnthropicLlmClient(anthropicKey, process.env.LLM_MODEL_NAME)
+      : new StubLlmClient();
+  // 실모델이 있으면 결정론적 스텁을 폴백으로 둔다(지연/검증 실패 시에도 유효한 리포트 보장).
+  const hasRealModel = Boolean(zaiKey || anthropicKey);
+  const reporter: LlmReporter = hasRealModel
+    ? new FallbackLlmReporter(new LlmGateway(client), new LlmGateway(new StubLlmClient()))
+    : new LlmGateway(client);
   return new ReportService(
     new PrismaCycleRepository(prisma),
     new PrismaScoreRepository(prisma),
     new PrismaTargetRepository(prisma),
     new PrismaAnalysisRepository(prisma),
-    new LlmGateway(client),
+    reporter,
     new PrismaReportRepository(prisma),
     new PrismaCompetitorSignalRepository(prisma),
+    new PrismaUnitRepository(prisma),
   );
 }
 

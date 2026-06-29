@@ -40,6 +40,8 @@ export class StubLlmClient implements LlmClient {
 }
 
 function render(input: LlmReportInput): LlmReportOutput {
+  if (input.positionReport && input.reportType === "june_position_report") return renderPositionReport(input);
+
   const d = input.analysisSummary.bandDistribution;
   const total = d.stable + d.match + d.reach + d.challenge + d.risk;
   const examLabel = EXAM_LABEL[input.userContext.examType] ?? input.userContext.examType;
@@ -109,6 +111,85 @@ function render(input: LlmReportInput): LlmReportOutput {
         ? "가/나/다군 원서 조합을 구성해 보세요."
         : "9월 모의평가 알림을 신청해 두면 같은 기준으로 변화를 추적할 수 있습니다.",
   };
+}
+
+function renderPositionReport(input: LlmReportInput): LlmReportOutput {
+  const position = input.positionReport!;
+  const line = position.lines[0];
+  const metric = position.metric;
+  const modeLabel = metric.mode === "converted" ? "환산점수" : metric.label;
+  const exploration = position.scope === "exploration";
+  const headline = line
+    ? exploration
+      ? `${position.season.current} ${modeLabel} 기준 ${line.tier}권 라인부터 검토할 수 있습니다.`
+      : `${line.univ} ${line.dept} ${position.metric.cutLabel} 대비 ${formatSigned(line.gap)}${position.metric.mode === "converted" ? "점" : ""}, ${line.tier}권에서 ${position.season.current}을 시작합니다.`
+    : `${position.season.current} ${modeLabel} ${metric.myValue ?? "-"} 기준의 참고용 리포트입니다.`;
+
+  const strengthSubjects = position.subjects.filter((s) => s.role === "strength");
+  const cautionSubjects = position.subjects.filter((s) => s.role === "caution");
+  const allowedStrength = input.analysisSummary.topReasonCodes.find((code) =>
+    strengthCode.safeParse(code).success,
+  );
+  const allowedWeakness = input.analysisSummary.topReasonCodes.find((code) =>
+    weaknessCode.safeParse(code).success,
+  );
+  const strengths = allowedStrength
+    ? strengthSubjects.slice(0, 3).map((subject) => ({
+    title: `${subject.name} 강점`,
+    description: `${subject.name} ${subject.metric} ${subject.value} 기준으로 유리하게 작용할 수 있습니다.`,
+    reason_code: allowedStrength as ReasonCode,
+      }))
+    : [];
+  const weaknesses = allowedWeakness
+    ? cautionSubjects.slice(0, 3).map((subject) => ({
+    title: `${subject.name} 주의`,
+    description: `${subject.name} ${subject.metric} ${subject.value} 구간은 전형별로 변수로 작용할 수 있습니다.`,
+    reason_code: allowedWeakness as ReasonCode,
+      }))
+    : [];
+  const lineSummary = position.lines.length
+    ? `${exploration ? "먼저 볼 만한 라인은" : "상위 라인은"} ${position.lines
+        .slice(0, 3)
+        .map((item) => `${item.univ} ${item.dept}(${item.tier})`)
+        .join(", ")} 순으로 확인됩니다.`
+    : "비교 가능한 지원 라인이 아직 충분하지 않습니다.";
+  const cautionText = cautionSubjects[0]
+    ? `${cautionSubjects[0].name} ${cautionSubjects[0].metric} ${cautionSubjects[0].value}이 핵심 변수입니다.`
+    : "현재 입력값 기준 큰 주의 과목은 제한적입니다.";
+
+  return {
+    one_line_summary: headline,
+    student_summary: `${headline} ${lineSummary} ${cautionText}`,
+    parent_summary: exploration
+      ? `${position.season.current} 기준으로 아직 지망을 정하기 전 전체 위치를 본 결과입니다. ${line?.tier ?? "참고"}권 라인을 먼저 살펴보고, 관심 학과를 저장해 좁혀 가는 흐름이 적절합니다.`
+      : `${position.season.current} 기준 결론은 ${line?.tier ?? "참고"}권입니다. 작년 기준선과의 차이를 본 참고 결과이며, 다음 시험 이후 더 정밀하게 다시 확인하는 흐름이 중요합니다.`,
+    strengths,
+    weaknesses,
+    recommended_actions: [
+      cautionSubjects[0]
+        ? `${cautionSubjects[0].name} ${cautionSubjects[0].metric} ${cautionSubjects[0].value} 구간을 우선 점검하세요.`
+        : "상위 지원 라인의 공통 반영 구조를 확인하세요.",
+      position.lines[0]
+        ? exploration
+          ? `${position.lines[0].univ} ${position.lines[0].dept}처럼 가까운 라인을 관심 모집단위로 저장해 두세요.`
+          : `${position.lines[0].univ} ${position.lines[0].dept}를 기준 라인으로 저장해 두세요.`
+        : "비교 가능한 모집단위를 추가해 라인을 넓히세요.",
+      position.season.next
+        ? `${position.season.next} 이후 같은 기준으로 격차를 갱신하세요.`
+        : "최종 지원 전 외부 도구 결과와 교차검증하세요.",
+    ],
+    warnings: [...input.warnings],
+    next_cta:
+      exploration
+        ? "관심 모집단위를 저장하면 목표 기준 리포트로 좁혀 볼 수 있습니다."
+        : input.userContext.examType === "csat"
+        ? "가/나/다군 원서 조합을 구성해 보세요."
+        : "9월 모의평가 알림을 신청해 두면 같은 기준으로 변화를 추적할 수 있습니다.",
+  };
+}
+
+function formatSigned(value: number): string {
+  return `${value >= 0 ? "+" : ""}${Math.round(value * 10) / 10}`;
 }
 
 function bandLabel(band: string): string {

@@ -18,6 +18,11 @@ export type AnalysisUnit = {
   recruitment_group: RecruitmentGroup;
   band: Band;
   confidence: Confidence;
+  metric_mode?: "converted" | "percentile";
+  metric_label?: string;
+  cut_label?: string;
+  my_value?: number | null;
+  reference_value?: number | null;
   score_gap: number;
   reason_codes: string[];
   warnings: string[];
@@ -64,7 +69,9 @@ export function UnitCard({
       {/* 점수차 + 신뢰도 */}
       <div className="mt-3 flex items-end justify-between gap-3 border-t border-slate-100 pt-3">
         <div>
-          <p className="text-[11px] text-slate-500">전년도 컷 대비</p>
+          <p className="text-[11px] text-slate-500">
+            {unit.cut_label ?? "전년도 컷"} 대비
+          </p>
           <p
             className={`mt-0.5 text-lg font-bold tabular-nums ${
               positive ? "text-band-stable-fg" : "text-band-challenge-fg"
@@ -73,6 +80,15 @@ export function UnitCard({
             {gapText}
             <span className="ml-0.5 text-xs font-normal text-slate-400">점</span>
           </p>
+          {unit.my_value !== undefined &&
+            unit.my_value !== null &&
+            unit.reference_value !== undefined &&
+            unit.reference_value !== null && (
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                내 {unit.metric_label ?? "점수"} {unit.my_value.toFixed(1)} · 기준{" "}
+                {unit.reference_value.toFixed(1)}
+              </p>
+            )}
         </div>
         <ConfidenceBadge confidence={unit.confidence} />
       </div>
